@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SoulSync - Join the Vibe</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../assets/style.css">
+    <style>
+        /* Bổ sung một vài style nhỏ cho tiêu đề từng bước */
+        .step-title {
+            margin-bottom: 15px; 
+            color: #333; 
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="register-card">
+        <center>
+            <img src="D:\mô hình hóa\Modeling\image\Pink and Neon Y2K Typography Beauty Store Logo (3).png" alt="SoulSync Logo" class="logo-placeholder">
+            <p class="subtitle">Start your journey to find your match...</p>
+        </center>
+        
+        <!-- Step Indicator updated to 5 dots -->
+        <div class="step-indicator">
+            <div class="step-dot active" id="dot-1" onclick="nextStep(1)">1</div>
+            <div class="step-dot" id="dot-2" onclick="nextStep(2)">2</div>
+            <div class="step-dot" id="dot-3" onclick="nextStep(3)">3</div>
+            <div class="step-dot" id="dot-4" onclick="nextStep(4)">4</div>
+            <div class="step-dot" id="dot-5" onclick="nextStep(5)">5</div>
+        </div>
+
+        <form id="registerForm">
+            
+            <!-- STEP 1: PERSONAL INFORMATION (Including Email) -->
+            <div class="form-step active" id="step-1">
+                <h2 class="step-title">Information</h2>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Full Name</label>
+                        <input type="text" placeholder="John Doe">
+                    </div>
+                    <div class="form-group">
+                        <label>Nickname</label>
+                        <input type="text" placeholder="e.g., Puppy, Kitty...">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Date of Birth</label>
+                        <input type="date">
+                    </div>
+                    <div class="form-group">
+                        <label>Gender</label>
+                        <select>
+                            <option>Male</option>
+                            <option>Female</option>
+                            <option>Other</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Occupation</label>
+                        <input type="text" placeholder="Student, Engineer...">
+                    </div>
+                    <div class="form-group">
+                        <label>Phone Number</label>
+                        <input type="tel" placeholder="09xx xxx xxx">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Email Address</label>
+                    <input type="email" placeholder="your@email.com">
+                </div>
+
+                <div class="btn-group">
+                    <button type="button" class="btn-submit" onclick="nextStep(2)">Continue &rarr;</button>
+                </div>
+                <p class="signup-link">Already have an account? <a href="login.html">Log in now</a></p>
+            </div>
+
+            <!-- STEP 2: SECURITY (Password only) -->
+            <div class="form-step" id="step-2">
+                <h2 class="step-title">Account Security</h2>
+                <p class="subtitle" style="text-align: left; margin-bottom: 20px;">Protect your account with a password</p>
+                
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" placeholder="••••••••">
+                </div>
+                <div class="form-group">
+                    <label>Confirm Password</label>
+                    <input type="password" placeholder="••••••••">
+                </div>
+
+                <div class="btn-group">
+                    <button type="button" class="btn-outline" onclick="prevStep(1)">Back</button>
+                    <button type="button" class="btn-submit btn-next" onclick="nextStep(3)">Continue &rarr;</button>
+                </div>
+            </div>
+
+            <!-- STEP 3: INTERESTS -->
+            <div class="form-step" id="step-3">
+                <h2 class="step-title">Your Interests</h2>
+                <p class="subtitle" style="text-align: left; margin-bottom: 15px; color:#666;">Pick at least 3 for better AI matching!</p>
+
+                <div class="tags-container" id="hobby-tags">
+                    <input type="checkbox" id="h1"><label for="h1">🎧 Music</label>
+                    <input type="checkbox" id="h2"><label for="h2">✈️ Travel</label>
+                    <input type="checkbox" id="h3"><label for="h3">☕ Coffee</label>
+                    <input type="checkbox" id="h4"><label for="h4">📖 Reading</label>
+                    <input type="checkbox" id="h5"><label for="h5">💪 Gym</label>
+                    <input type="checkbox" id="h6"><label for="h6">🐈 Pets</label>
+                    <input type="checkbox" id="h7"><label for="h7">🎬 Movies</label>
+                    <input type="checkbox" id="h8"><label for="h8">🍳 Cooking</label>
+                    <input type="checkbox" id="h9"><label for="h9">🎮 Gaming</label>
+                    <input type="checkbox" id="h10"><label for="h10">🎨 Art</label>
+                    <input type="checkbox" id="h11"><label for="h11">📸 Photography</label>
+                </div>
+
+                <div class="btn-group">
+                    <button type="button" class="btn-outline" onclick="prevStep(2)">Back</button>
+                    <button type="button" class="btn-submit btn-next" onclick="nextStep(4)">Continue &rarr;</button>
+                </div>
+            </div>
+
+            <!-- STEP 4: PREFERENCES -->
+            <div class="form-step" id="step-4">
+                <h2 class="step-title">Your "Type"?</h2>
+                <p class="subtitle" style="text-align: left; margin-bottom: 15px; color:#666;">Define your ideal match</p>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Interested in</label>
+                        <select>
+                            <option>Male</option>
+                            <option>Female</option>
+                            <option>Anyone</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Age Range</label>
+                        <select>
+                            <option>18 - 22 years old</option>
+                            <option>23 - 27 years old</option>
+                            <option>28 - 35 years old</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Ideal Personality</label>
+                    <div class="tags-container">
+                        <input type="checkbox" id="p1"><label for="p1">😊 Humorous</label>
+                        <input type="checkbox" id="p2"><label for="p2">🧠 Mature</label>
+                        <input type="checkbox" id="p3"><label for="p3">🤫 Quiet</label>
+                        <input type="checkbox" id="p4"><label for="p4">🔥 Energetic</label>
+                        <input type="checkbox" id="p5"><label for="p5">✨ Thoughtful</label>
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-top: 10px;">
+                    <label>Message to the future</label>
+                    <textarea placeholder="e.g., Hey there, I love weekend walks by the lake..."></textarea>
+                </div>
+
+                <div class="btn-group">
+                    <button type="button" class="btn-outline" onclick="prevStep(3)">Back</button>
+                    <button type="button" class="btn-submit btn-next" onclick="nextStep(5)">Continue &rarr;</button>
+                </div>
+            </div>
+
+            <!-- STEP 5: PHOTOS -->
+            <div class="form-step" id="step-5">
+                <h2 class="step-title">Time to shine!</h2>
+                <p class="subtitle" style="text-align: left; margin-bottom: 15px; color:#666;">Add 1 profile picture and 3 extra photos.</p>
+
+                <div class="photo-grid">
+                    <label class="photo-upload photo-main">
+                        <input type="file" accept="image/*">
+                        <span>📸</span>
+                        <p>Avatar</p>
+                    </label>
+                    
+                    <label class="photo-upload">
+                        <input type="file" accept="image/*">
+                        <span>+</span>
+                    </label>
+                    <label class="photo-upload">
+                        <input type="file" accept="image/*">
+                        <span>+</span>
+                    </label>
+                    <label class="photo-upload">
+                        <input type="file" accept="image/*">
+                        <span>+</span>
+                    </label>
+                </div>
+
+                <div class="form-group">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <input type="checkbox" id="terms" required style="width: auto; margin:0;">
+                        <label for="terms" style="font-size: 0.8rem; color: #666; margin:0; cursor:pointer;">
+                            I agree to the <a href="#" style="color:#e83e8c; font-weight:600;">SoulSync Terms</a>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="btn-group">
+                    <button type="button" class="btn-outline" onclick="prevStep(4)">Back</button>
+                    <button type="button" class="btn-submit btn-next" onclick="finishRegistration()">START SYNC IN 💖</button>
+                </div>
+            </div>
+
+        </form>
+    </div>
+
+    <div class="footer-links">
+        <a href="#">Privacy Policy</a>
+        <a href="#">Terms of Service</a>
+        <a href="#">Safety Tips</a>
+    </div>
+
+    <script>
+        // Cập nhật vòng lặp đến 5 bước
+        function updateProgress(step) {
+            for (let i = 1; i <= 5; i++) {
+                const dot = document.getElementById('dot-' + i);
+                if (i <= step) {
+                    dot.classList.add('active');
+                } else {
+                    dot.classList.remove('active');
+                }
+            }
+        }
+
+        function nextStep(step) {
+            document.querySelectorAll('.form-step').forEach(el => el.classList.remove('active'));
+            document.getElementById('step-' + step).classList.add('active');
+            updateProgress(step);
+        }
+
+        function prevStep(step) {
+            document.querySelectorAll('.form-step').forEach(el => el.classList.remove('active'));
+            document.getElementById('step-' + step).classList.add('active');
+            updateProgress(step);
+        }
+
+        function finishRegistration() {
+            alert("Congratulations! Profile created successfully. AI is analyzing your data to find matches...");
+        }
+    </script>
+</body>
+</html>
