@@ -1,300 +1,209 @@
 /* =========================================
-   1. RESET & BASE STYLES (DÙNG CHUNG)
+   1. ROOT VARIABLES & FONTS
+   ========================================= */
+@import url('https://fonts.googleapis.com/css2?family=Public+Sans:ital,wght@0,300;0,400;0,600;0,700;0,800;1,800&display=swap');
+
+:root {
+    --y2k-pink: #e83e8c;
+    --y2k-hot-pink: #ff4b82;
+    --y2k-purple: #800040;
+    --y2k-dark-red: #5d1029;
+    --y2k-gradient: linear-gradient(135deg, #ff4b82 0%, #800040 100%);
+    --glass-bg: rgba(255, 255, 255, 0.85);
+    --glass-border: rgba(255, 255, 255, 0.2);
+}
+
+/* =========================================
+   2. RESET & BASE STYLES
    ========================================= */
 * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
-    font-family: 'Inter', sans-serif;
+    font-family: 'Public Sans', sans-serif;
 }
+
+html { scroll-behavior: smooth; }
 
 body {
-    /* Đổi lại đường dẫn ảnh theo máy của bạn nếu cần */
-    background-image: url('D:/mô hình hóa/Modeling/image/image.png'); 
-    background-size: cover;
-    background-position: center;
-    background-repeat: no-repeat;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    position: relative;
-    padding: 20px; /* Thêm padding để trên mobile không bị sát viền */
-}
-
-/* Lớp phủ mờ nền */
-body::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(255, 150, 150, 0.15); 
-    z-index: 0;
+    background-color: #ffffff !important;
+    color: #333;
+    line-height: 1.6;
+    overflow-x: hidden;
+    width: 100%;
 }
 
 /* =========================================
-   2. KHUNG THẺ FORM (CARDS)
+   3. LANDING PAGE (INDEX.HTML) - CẤU TRÚC CHUẨN
    ========================================= */
-/* Khung trang Đăng Nhập */
-.login-card {
-    background-color: rgba(255, 255, 255, 0.98);
-    width: 100%;
-    max-width: 400px;
-    padding: 40px;
-    border-radius: 15px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-    z-index: 1;
+.landing-body {
+    display: block; /* Đảm bảo các section xếp chồng lên nhau */
+}
+
+/* Điều hướng */
+.intro-nav {
     display: flex;
-    flex-direction: column;
+    justify-content: space-between;
     align-items: center;
-}
-
-/* Khung trang Đăng Ký (To hơn để chứa form 2 cột) */
-.register-card {
-    background-color: rgba(255, 255, 255, 0.98);
+    padding: 25px 8%;
     width: 100%;
-    max-width: 550px; 
-    padding: 40px;
-    border-radius: 15px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-    z-index: 1;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+}
+
+.nav-links { display: flex; gap: 30px; align-items: center; }
+.nav-links a { text-decoration: none; color: #444; font-weight: 700; font-size: 0.9rem; transition: 0.3s; }
+.btn-nav-join { background: var(--y2k-pink); color: #fff !important; padding: 10px 25px; border-radius: 50px; }
+
+/* Hero Section */
+.hero-section {
     display: flex;
-    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    padding: 80px 8%;
+    width: 100%;
+    min-height: 80vh;
+    max-width: 1400px;
+    margin: 0 auto;
 }
 
-/* =========================================
-   3. LOGO & TEXT
-   ========================================= */
-.logo-placeholder {
-    width: 220px; 
-    height: auto;
-    display: block;
-    margin: 0 auto 20px auto; /* Căn giữa logo tuyệt đối */
-}
+.hero-content { flex: 1.2; }
+.hero-title img { max-width: 550px; width: 100%; margin-left: -20px; }
+.hero-desc { font-size: 1.2rem; color: #666; margin-bottom: 40px; max-width: 500px; }
+.hero-buttons { display: flex; gap: 20px; }
 
-.subtitle {
-    color: #e83e8c;
-    font-size: 0.95rem;
-    font-weight: 500;
-    margin-bottom: 25px;
+.btn-primary { background: var(--y2k-gradient); color: white; padding: 15px 40px; border-radius: 12px; text-decoration: none; font-weight: 800; box-shadow: 0 10px 25px rgba(255, 75, 130, 0.3); }
+.btn-secondary { border: 2px solid var(--y2k-pink); color: var(--y2k-pink); padding: 15px 40px; border-radius: 12px; text-decoration: none; font-weight: 800; }
+
+.hero-image { flex: 1; display: flex; justify-content: center; position: relative; }
+.couple-img { width: 100%; border-radius: 30px; box-shadow: 0 20px 50px rgba(0,0,0,0.1); }
+
+/* How It Works (Dark Section) - ÉP XUỐNG DÒNG */
+.how-it-works-section {
+    width: 100%;
+    clear: both;
+    padding: 100px 8%;
+    background-color: var(--y2k-dark-red);
     text-align: center;
+    color: #fff;
 }
 
-/* =========================================
-   4. FORM INPUTS (ĐÃ FIX CHO MỌI LOẠI Ô NHẬP)
-   ========================================= */
-.form-row { display: flex; gap: 15px; }
-.form-row .form-group { flex: 1; }
+.how-it-works-section h2 { font-size: 3rem; font-weight: 800; margin-bottom: 60px; }
 
-.form-group {
-    width: 100%;
-    margin-bottom: 18px;
-}
-
-.form-group label {
-    display: block;
-    font-size: 0.85rem;
-    font-weight: 600;
-    color: #333;
-    margin-bottom: 8px;
-}
-
-/* Áp dụng giao diện đồng nhất cho tất cả các loại ô nhập */
-.form-group input, 
-.form-group select, 
-.form-group textarea {
-    width: 100%;
-    padding: 12px 15px;
-    background-color: #f5f6f8;
-    border: 1px solid #f5f6f8;
-    border-radius: 8px;
-    font-size: 0.95rem;
-    color: #333;
-    outline: none;
-    transition: 0.3s ease;
-}
-
-.form-group input:focus, 
-.form-group select:focus, 
-.form-group textarea:focus {
-    border-color: #e83e8c;
-    background-color: #fff;
-    box-shadow: 0 0 0 3px rgba(232, 62, 140, 0.1);
-}
-
-.form-group textarea {
-    resize: vertical; 
-    min-height: 80px;
-}
-
-/* Các link nhỏ (Quên MK, Đăng ký) */
-.form-group .label-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 8px;
-}
-
-.form-group .label-row label { margin-bottom: 0; }
-
-.forgot-link {
-    color: #e83e8c;
-    font-size: 0.8rem;
-    text-decoration: none;
-    font-weight: 500;
-}
-
-/* =========================================
-   5. NÚT BẤM (BUTTONS) & CHECKBOX
-   ========================================= */
-.btn-group { display: flex; gap: 15px; margin-top: 15px; }
-
-.btn-submit {
-    flex: 2;
-    width: 100%;
-    padding: 14px;
-    background-color: #e83e8c;
-    color: white;
-    border: none;
-    border-radius: 8px;
-    font-size: 1rem;
-    font-weight: 600;
-    cursor: pointer;
-    letter-spacing: 0.5px;
-    transition: background-color 0.3s ease;
-}
-.btn-submit:hover { background-color: #d63381; }
-
-.btn-outline {
-    flex: 1;
-    padding: 14px;
-    background: transparent; color: #e83e8c;
-    border: 2px solid #e83e8c; border-radius: 8px;
-    font-weight: 600; cursor: pointer; transition: 0.3s;
-}
-.btn-outline:hover { background: #fff0f6; }
-
-/* Checkbox */
-.checkbox-group {
-    width: 100%;
-    display: flex;
-    align-items: center;
-    margin-bottom: 20px;
-}
-.checkbox-group input[type="checkbox"] {
-    margin-right: 8px;
-    accent-color: #e83e8c;
-    width: 16px;
-    height: 16px;
-    cursor: pointer;
-}
-.checkbox-group label {
-    font-size: 0.85rem;
-    color: #666;
-    cursor: pointer;
-}
-
-/* =========================================
-   6. THANH TIẾN TRÌNH & ĐIỀU HƯỚNG BƯỚC
-   ========================================= */
-.step-indicator {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 30px;
-    position: relative;
-    padding: 0 10px;
-}
-.step-indicator::before {
-    content: '';
-    position: absolute;
-    top: 50%; left: 0; right: 0;
-    height: 3px; background: #eee;
-    z-index: 1; transform: translateY(-50%);
-}
-.step-dot {
-    width: 32px; height: 32px;
-    border-radius: 50%;
-    background: #eee; color: #999;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 0.85rem; font-weight: bold;
-    z-index: 2; border: 3px solid #fff;
-    transition: 0.4s ease;
-}
-.step-dot.active {
-    background: #e83e8c; color: #fff; border-color: #ffe6f0;
-}
-
-.form-step { display: none; animation: fadeIn 0.4s ease; }
-.form-step.active { display: block; }
-
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
-/* =========================================
-   7. CHỌN SỞ THÍCH (TAGS)
-   ========================================= */
-.tags-container {
-    display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px;
-}
-.tags-container input[type="checkbox"] { display: none; } /* Ẩn ô vuông mặc định */
-.tags-container label {
-    padding: 10px 18px;
-    background: #f0f2f5; color: #555;
-    border-radius: 20px; font-size: 0.85rem; font-weight: 500;
-    cursor: pointer; border: 1px solid #e1e4e8;
-    transition: 0.2s; user-select: none;
-}
-.tags-container input[type="checkbox"]:checked + label {
-    background: #e83e8c; color: white; border-color: #e83e8c;
-    box-shadow: 0 4px 10px rgba(232, 62, 140, 0.3);
-}
-
-/* =========================================
-   8. UPLOAD HÌNH ẢNH (CSS GRID)
-   ========================================= */
-.photo-grid {
+.steps-grid {
     display: grid;
-    grid-template-columns: 2fr 1fr 1fr;
-    grid-template-rows: 120px 120px;
-    gap: 12px; margin-bottom: 25px;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 40px;
+    max-width: 1200px;
+    margin: 0 auto;
 }
-.photo-upload {
-    background: #f5f6f8; border: 2px dashed #ccc;
-    border-radius: 12px; display: flex; flex-direction: column;
-    align-items: center; justify-content: center;
-    cursor: pointer; position: relative; color: #888; transition: 0.2s;
-}
-.photo-upload:hover { border-color: #e83e8c; color: #e83e8c; background: #fff0f6;}
-.photo-upload input[type="file"] { display: none; }
-.photo-upload span { font-size: 2rem; margin-bottom: 5px; }
-.photo-upload p { font-size: 0.8rem; font-weight: 500; }
-.photo-main { grid-row: span 2; } /* Avatar to chiếm 2 hàng */
 
-/* =========================================
-   9. FOOTER & LINKS
-   ========================================= */
-.signup-link {
-    margin-top: 25px;
-    font-size: 0.85rem;
-    color: #888;
+.step-card {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 40px 20px;
+    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.step-icon {
+    font-family: 'Material Icons' !important;
+    font-size: 35px;
+    width: 90px;
+    height: 90px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 20px;
+}
+
+.step-icon.pink { background: rgba(232, 62, 140, 0.2); color: var(--y2k-pink); }
+.step-icon.yellow { background: rgba(255, 223, 0, 0.2); color: #ffdf00; }
+.step-icon.blue { background: rgba(0, 123, 255, 0.2); color: #007bff; }
+
+/* Stories Section - ÉP XUỐNG DÒNG */
+.stories-section {
+    width: 100%;
+    clear: both;
+    padding: 100px 8%;
+    background-color: #fff0f6;
     text-align: center;
 }
-.signup-link a {
-    color: #e83e8c;
-    text-decoration: none;
-    font-weight: 600;
+
+.testimonial-card {
+    max-width: 650px;
+    margin: 50px auto;
+    background: #fff;
+    padding: 50px 40px;
+    border-radius: 25px;
+    border: 2px solid var(--y2k-hot-pink);
+    position: relative;
 }
-.footer-links {
-    margin-top: 20px;
-    z-index: 1;
-    display: flex;
-    gap: 15px;
+
+.quote-icon {
+    font-family: 'Material Icons' !important;
+    font-size: 45px;
+    color: var(--y2k-hot-pink);
+    background: #fff;
+    padding: 0 15px;
+    position: absolute;
+    top: -30px;
+    left: 50%;
+    transform: translateX(-50%);
 }
-.footer-links a {
-    color: rgba(255, 255, 255, 0.9);
-    font-size: 0.8rem;
-    text-decoration: none;
+
+.author-avatar { width: 70px; height: 70px; border-radius: 50%; border: 3px solid var(--y2k-hot-pink); margin-bottom: 15px; }
+
+/* Footer Gradient */
+.cta-footer {
+    width: 100%;
+    clear: both;
+    padding: 100px 8%;
+    background: linear-gradient(to right, #ff7eb3, #ff758c, #ffffff);
+    text-align: center;
 }
-.footer-links a:hover { text-decoration: underline; }
+
+.btn-footer { background: #800020; color: #fff; padding: 15px 40px; border-radius: 10px; font-weight: 700; text-decoration: none; display: inline-block; margin-top: 30px; }
+
+/* =========================================
+   4. REGISTER PAGE (DÀNH CHO TRANG REGISTER)
+   ========================================= */
+.register-card {
+    background: #fff;
+    width: 100%;
+    max-width: 500px;
+    margin: 60px auto;
+    padding: 45px;
+    border-radius: 35px;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.1);
+    text-align: center;
+}
+
+/* Ẩn các bước không active */
+.form-step { display: none; }
+.form-step.active { display: block; animation: zoomIn 0.4s ease; }
+
+.logo-placeholder { width: 100%; max-width: 220px; margin-bottom: 20px; }
+
+.step-indicator { display: flex; justify-content: space-between; margin: 25px 0; position: relative; }
+.step-indicator::before { content: ''; position: absolute; top: 50%; left: 0; right: 0; height: 2px; background: #eee; z-index: 0; }
+.step-dot { width: 35px; height: 35px; border-radius: 50%; background: #fff; border: 2px solid #eee; display: flex; align-items: center; justify-content: center; font-weight: 800; z-index: 1; font-size: 0.8rem; }
+.step-dot.active { background: var(--y2k-pink); border-color: var(--y2k-pink); color: #fff; }
+
+.form-group { text-align: left; margin-bottom: 18px; }
+.form-group label { display: block; font-weight: 700; margin-bottom: 8px; font-size: 0.85rem; }
+.form-group input, .form-group select, .form-group textarea { width: 100%; padding: 12px; border: 2px solid #f0f2f5; border-radius: 12px; }
+
+/* Interest Tags */
+.tags-container { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-bottom: 20px; }
+.interest-check { display: none; }
+.interest-check + label { padding: 6px 15px; background: #f0f2f5; border-radius: 50px; cursor: pointer; font-size: 0.85rem; font-weight: 600; }
+.interest-check:checked + label { background: var(--y2k-pink); color: #fff; }
+
+.btn-submit { background: var(--y2k-pink); color: white; width: 100%; padding: 14px; border: none; border-radius: 12px; font-weight: 800; cursor: pointer; margin-top: 10px; }
+.btn-outline { background: #fff; border: 2px solid #eee; padding: 12px; border-radius: 12px; font-weight: 700; cursor: pointer; margin-right: 10px; }
+
+@keyframes zoomIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }

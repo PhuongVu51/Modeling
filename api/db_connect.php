@@ -4,13 +4,15 @@ $username = "root";
 $password = ""; 
 $dbname = "soul_sync_db";
 
-// Tạo kết nối
+// Criar conexão
 $conn = new mysqli($servername, $username, $password, $dbname);
 
-// Kiểm tra kết nối
-if ($conn->connect_error) {
-    die(json_encode(["status" => "error", "message" => "Kết nối thất bại: " . $conn->connect_error]));
+// Configurar charset
+if ($conn->select_db($dbname)) {
+    $conn->set_charset("utf8mb4");
 }
 
-$conn->set_charset("utf8");
+// Não exibe erros, apenas deixa disponível para verificação
+error_reporting(E_ALL);
+ini_set('display_errors', 0);
 ?>

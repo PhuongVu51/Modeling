@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SoulSync - In Sync-In Love</title>
+    <!-- Đổi font sang Public Sans -->
+    <link href="https://fonts.googleapis.com/css2?family=Public+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link rel="stylesheet" href="../assets/style.css">
+    <style>
+        /* Ép buộc dùng font Public Sans cho toàn bộ trang Landing */
+        body.landing-body, body.landing-body * {
+            font-family: 'Public Sans', sans-serif !important;
+        }
+        
+        /* Chỉnh lại nút bấm cho giống Figma (bo góc mềm hơn) */
+        .hero-buttons .btn-primary {
+            border-radius: 8px;
+            padding: 12px 30px;
+        }
+        .hero-buttons .btn-secondary {
+            border-radius: 8px;
+            padding: 12px 30px;
+        }
+    </style>
+</head>
+<body class="landing-body">
+
+    <nav class="intro-nav">
+        <div class="nav-logo">
+            <img src="../image/Pink and Neon Y2K Typography Beauty Store Logo (3).png" alt="SoulSync" style="height: 40px; object-fit: contain;">
+        </div>
+        <div class="nav-links">
+            <a href="#how-it-works">How it Works</a>
+            <a href="#features">AI Features</a>
+            <a href="#stories">Stories</a>
+            <a href="register.html" class="btn-nav-join">Join Now</a>
+        </div>
+    </nav>
+
+    <section class="hero-section">
+        <div class="hero-content">
+            <h1 class="hero-title" style="margin-bottom: 15px; text-align: left;">
+                <img src="../image/Pink and Neon Y2K Typography Beauty Store Logo (3).png" alt="SoulSync" style="width: 100%; max-width: 580px; height: auto; display: block; margin-bottom: -25px; margin-left: -20px;">
+                
+            </h1>
+            
+            <p class="hero-desc" style="max-width: 450px; text-align: left; font-size: 1.15rem; line-height: 1.6; margin-bottom: 35px;">
+                Experience the future of dating where AI meets Y2K aesthetics. Find your perfect frequency and sync your soul with genuine connections.
+            </p>
+            
+            <div class="hero-buttons" style="justify-content: flex-start; gap: 20px;">
+                <a href="login.html" class="btn-primary">Get Started</a>
+                <a href="register.html" class="btn-secondary">Join Now</a>
+            </div>
+        </div>
+        <div class="hero-image">
+            <div class="mockup-box">
+                <img src="../image/1feccced-2277-42c4-bbca-043c5a6b4c2c.png" alt="Couple Syncing" class="couple-img">
+                <div class="floating-badge badge-top">New Sync! 💖</div>
+                <div class="floating-badge badge-bottom">"Wanna grab coffee? ☕"</div>
+            </div>
+        </div>
+    </section>
+
+    <section id="how-it-works" class="how-it-works-section">
+        <h2>How It Works</h2>
+        <div class="steps-grid">
+            <div class="step-card">
+                <span class="material-icons step-icon pink">person_add</span>
+                <h3>Create Profile</h3>
+                <p>Tell us about your interests, your vibe, and your favorite Y2K trends to build your unique digital soul.</p>
+            </div>
+            <div class="step-card">
+                <span class="material-icons step-icon yellow">psychology</span>
+                <h3>AI Finds Your Match</h3>
+                <p>Our advanced neural network analyzes your unique frequency to suggest highly compatible partners instantly.</p>
+            </div>
+            <div class="step-card">
+                <span class="material-icons step-icon blue">forum</span>
+                <h3>Chat & Connect</h3>
+                <p>Break the ice with retro-themed chat windows and start your journey toward a meaningful, high-sync connection.</p>
+            </div>
+        </div>
+    </section>
+
+    <section id="stories" class="stories-section">
+        <h2>Heart-to-Heart Stories</h2>
+        <p class="section-sub">Real connections made on SoulSync</p>
+        
+        <div class="testimonial-card">
+            <span class="material-icons quote-icon">format_quote</span>
+            <p class="quote-text">"I found someone who truly understands me. The AI matching isn't just about hobbies; it's about the soul frequency. We've been in sync since our first chat!"</p>
+            <div class="author-info">
+                <img src="../image/a1-txig.jpg" alt="Sarah J." class="author-avatar">
+                <h4>Sarah J.</h4>
+                <span>MATCHED 6 MONTHS AGO</span>
+            </div>
+        </div>
+    </section>
+
+    <footer class="cta-footer">
+        <h2>Start your journey today</h2>
+        <p>Join thousands of souls finding their perfect match in the most vibrant dating community on the web.</p>
+        <a href="register.html" class="btn-footer">Sign Up Free</a>
+        <p class="available-text">Available now on iOS and Android</p>
+        
+        <div class="footer-bottom">
+            <span>© 2026 SoulSync. All vibes reserved.</span>
+            <div class="footer-links-small">
+                <a href="#">share</a>
+                <a href="#">policy</a>
+                <a href="#">help</a>
+            </div>
+        </div>
+    </footer>
+
+</body>
+</html>

@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SoulSync - Join the Vibe</title>
+    <link href="https://fonts.googleapis.com/css2?family=Public+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link rel="stylesheet" href="../assets/style.css">
+    <style>
+        body {
+            display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 40px 20px;
+            background-image: url('../image/1feccced-2277-42c4-bbca-043c5a6b4c2c.png');
+            background-size: cover; background-position: center; background-repeat: no-repeat; background-attachment: fixed; position: relative;
+        }
+        body::before { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(253, 242, 247, 0.75); z-index: 1; }
+        .register-card {
+            background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);
+            width: 100%; max-width: 580px; padding: 40px; border-radius: 35px; box-shadow: 0 40px 100px rgba(0,0,0,0.15);
+            position: relative; z-index: 2; border: 1px solid rgba(255, 255, 255, 0.4); animation: zoomIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275); text-align: center;
+        }
+        .logo-placeholder { max-width: 180px; margin-bottom: 10px; }
+        .subtitle { color: #666; font-size: 0.9rem; font-weight: 600; margin-bottom: 25px; }
+        .step-title { margin-bottom: 15px; color: #5d1029; font-size: 1.4rem; font-weight: 800; text-align: left; }
+        .tags-container { display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-start; margin: 15px 0 25px; }
+        .interest-check, .interest-check-p { display: none; }
+        .interest-label { padding: 8px 14px; background: #fff; border: 1px solid #eee; border-radius: 50px; font-size: 0.8rem; font-weight: 600; cursor: pointer; transition: 0.3s; }
+        .interest-check:checked + .interest-label, .interest-check-p:checked + .interest-label {
+            background: #e83e8c; color: #fff; border-color: #e83e8c; box-shadow: 0 5px 12px rgba(232, 62, 140, 0.3);
+        }
+        .avatar-display-area { display: flex; justify-content: center; margin: 20px 0; }
+        .avatar-wrapper {
+            width: 150px; height: 150px; border-radius: 50%; overflow: hidden; position: relative; border: 4px solid #fff;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.1); background: #f8fafc; display: flex; align-items: center; justify-content: center; cursor: pointer;
+        }
+        .preview-img { width: 100%; height: 100%; object-fit: cover; position: absolute; top: 0; left: 0; z-index: 5; }
+        .btn-group { display: flex; gap: 12px; margin-top: 25px; }
+        .btn-next, .btn-submit {
+            background: linear-gradient(135deg, #ff4b82 0%, #800040 100%);
+            color: white; flex: 2; padding: 15px; border: none; border-radius: 12px; font-weight: 800; cursor: pointer; transition: 0.3s;
+        }
+        .btn-prev { background: #f0f2f5; color: #666; flex: 1; padding: 15px; border: none; border-radius: 12px; font-weight: 700; cursor: pointer; }
+        .login-redirect { margin-top: 20px; padding-top: 15px; border-top: 1px solid #eee; font-size: 0.85rem; color: #666; }
+        .login-redirect a { color: #e83e8c; text-decoration: none; font-weight: 700; }
+        @keyframes zoomIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+    </style>
+</head>
+<body>
+
+    <div class="register-card">
+        <center>
+            <img src="../image/Pink and Neon Y2K Typography Beauty Store Logo (3).png" alt="Logo" class="logo-placeholder">
+            <p class="subtitle">Start your journey to find your match...</p>
+        </center>
+        
+        <div class="step-indicator">
+            <div class="step-dot active" id="dot-1">1</div>
+            <div class="step-dot" id="dot-2">2</div>
+            <div class="step-dot" id="dot-3">3</div>
+            <div class="step-dot" id="dot-4">4</div>
+            <div class="step-dot" id="dot-5">5</div>
+        </div>
+
+        <form id="registerForm" enctype="multipart/form-data">
+            <div class="form-step active" id="step-1">
+                <h2 class="step-title">The Basics</h2>
+                <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div class="form-group" style="text-align: left;"><label style="font-weight:700;">Full Name</label><input type="text" name="full_name" placeholder="Le Phuong" required style="width:100%; padding:12px; border-radius:10px; border:1px solid #eee;"></div>
+                    <div class="form-group" style="text-align: left;"><label style="font-weight:700;">Nickname</label><input type="text" name="nickname" placeholder="Phuongvu" required style="width:100%; padding:12px; border-radius:10px; border:1px solid #eee;"></div>
+                </div>
+                <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top:15px;">
+                    <div class="form-group" style="text-align: left;"><label style="font-weight:700;">Birthday</label><input type="date" name="dob" required style="width:100%; padding:12px; border-radius:10px; border:1px solid #eee;"></div>
+                    <div class="form-group" style="text-align: left;"><label style="font-weight:700;">Gender</label><select name="gender" required style="width:100%; padding:12px; border-radius:10px; border:1px solid #eee;"><option value="Male">Male</option><option value="Female">Female</option><option value="Other">Other</option></select></div>
+                </div>
+                <div class="form-group" style="text-align: left; margin-top:15px;"><label style="font-weight:700;">Email</label><input type="email" name="email" required style="width:100%; padding:12px; border-radius:10px; border:1px solid #eee;"></div>
+                <div class="form-group" style="text-align: left; margin-top:15px;"><label style="font-weight:700;">Phone</label><input type="tel" name="phone" required style="width:100%; padding:12px; border-radius:10px; border:1px solid #eee;"></div>
+                <div class="btn-group"><button type="button" class="btn-next" onclick="handleNext(1, 2)">NEXT STEP &rarr;</button></div>
+            </div>
+
+            <div class="form-step" id="step-2">
+                <h2 class="step-title">Security</h2>
+                <div class="form-group" style="text-align: left;"><label style="font-weight:700;">Password</label><input type="password" name="password" id="password" required style="width:100%; padding:12px; border-radius:10px; border:1px solid #eee;"></div>
+                <div class="form-group" style="text-align: left; margin-top:15px;"><label style="font-weight:700;">Confirm Password</label><input type="password" id="confirm_pw" required style="width:100%; padding:12px; border-radius:10px; border:1px solid #eee;"></div>
+                <div class="btn-group">
+                    <button type="button" class="btn-prev" onclick="prevStep(1)">Back</button>
+                    <button type="button" class="btn-next" onclick="handleNext(2, 3)">CONTINUE</button>
+                </div>
+            </div>
+
+            <div class="form-step" id="step-3">
+                <h2 class="step-title">Your Interests</h2>
+                <p style="text-align:left; font-size: 0.8rem; color:#888;">Pick at least 3</p>
+                <div class="tags-container">
+                    <input type="checkbox" class="interest-check" value="1" id="m1"><label for="m1" class="interest-label">🎧 Music</label>
+                    <input type="checkbox" class="interest-check" value="2" id="m2"><label for="m2" class="interest-label">✈️ Travel</label>
+                    <input type="checkbox" class="interest-check" value="3" id="m3"><label for="m3" class="interest-label">☕ Coffee</label>
+                    <input type="checkbox" class="interest-check" value="4" id="m4"><label for="m4" class="interest-label">📖 Reading</label>
+                    <input type="checkbox" class="interest-check" value="5" id="m5"><label for="m5" class="interest-label">💪 Gym</label>
+                    <input type="checkbox" class="interest-check" value="6" id="m6"><label for="m6" class="interest-label">🐈 Pets</label>
+                    <input type="checkbox" class="interest-check" value="7" id="m7"><label for="m7" class="interest-label">🎬 Movies</label>
+                    <input type="checkbox" class="interest-check" value="8" id="m8"><label for="m8" class="interest-label">🍳 Cooking</label>
+                    <input type="checkbox" class="interest-check" value="9" id="m9"><label for="m9" class="interest-label">🎮 Gaming</label>
+                    <input type="checkbox" class="interest-check" value="10" id="m10"><label for="m10" class="interest-label">🎨 Art</label>
+                    <input type="checkbox" class="interest-check" value="11" id="m11"><label for="m11" class="interest-label">📸 Photo</label>
+                    <input type="checkbox" class="interest-check" value="12" id="m12"><label for="m12" class="interest-label">💃 Dancing</label>
+                    <input type="checkbox" class="interest-check" value="13" id="m13"><label for="m13" class="interest-label">🍜 Foodie</label>
+                    <input type="checkbox" class="interest-check" value="14" id="m14"><label for="m14" class="interest-label">⚽ Sports</label>
+                    <input type="checkbox" class="interest-check" value="15" id="m15"><label for="m15" class="interest-label">🎤 Karaoke</label>
+                </div>
+                <div class="btn-group">
+                    <button type="button" class="btn-prev" onclick="prevStep(2)">Back</button>
+                    <button type="button" class="btn-next" onclick="handleNext(3, 4)">CONTINUE</button>
+                </div>
+            </div>
+
+            <div class="form-step" id="step-4">
+                <h2 class="step-title">Ideal Match</h2>
+                <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div class="form-group" style="text-align: left;"><label style="font-weight:700;">Looking for</label><select name="interested_in" style="width:100%; padding:12px; border-radius:10px; border:1px solid #eee;"><option value="Female">Female</option><option value="Male">Male</option><option value="Anyone">Anyone</option></select></div>
+                    <div class="form-group" style="text-align: left;"><label style="font-weight:700;">Age Range</label><select name="age_range" style="width:100%; padding:12px; border-radius:10px; border:1px solid #eee;"><option value="18-22">18-22</option><option value="23-27">23-27</option><option value="28+">28+</option></select></div>
+                </div>
+                <p style="text-align:left; font-size: 0.8rem; color:#888; margin-top:20px;">They should love... (Pick at least 3)</p>
+                <div class="tags-container">
+                    <input type="checkbox" class="interest-check-p" value="1" id="p1"><label for="p1" class="interest-label">🎧 Music</label>
+                    <input type="checkbox" class="interest-check-p" value="2" id="p2"><label for="p2" class="interest-label">✈️ Travel</label>
+                    <input type="checkbox" class="interest-check-p" value="3" id="p3"><label for="p3" class="interest-label">☕ Coffee</label>
+                    <input type="checkbox" class="interest-check-p" value="4" id="p4"><label for="p4" class="interest-label">📖 Reading</label>
+                    <input type="checkbox" class="interest-check-p" value="5" id="p5"><label for="p5" class="interest-label">💪 Gym</label>
+                    <input type="checkbox" class="interest-check-p" value="6" id="p6"><label for="p6" class="interest-label">🐈 Pets</label>
+                    <input type="checkbox" class="interest-check-p" value="7" id="p7"><label for="p7" class="interest-label">🎬 Movies</label>
+                    <input type="checkbox" class="interest-check-p" value="8" id="p8"><label for="p8" class="interest-label">🍳 Cooking</label>
+                    <input type="checkbox" class="interest-check-p" value="9" id="p9"><label for="p9" class="interest-label">🎮 Gaming</label>
+                    <input type="checkbox" class="interest-check-p" value="10" id="p10"><label for="p10" class="interest-label">🎨 Art</label>
+                    <input type="checkbox" class="interest-check-p" value="11" id="p11"><label for="p11" class="interest-label">📸 Photo</label>
+                    <input type="checkbox" class="interest-check-p" value="12" id="p12"><label for="p12" class="interest-label">💃 Dancing</label>
+                    <input type="checkbox" class="interest-check-p" value="13" id="p13"><label for="p13" class="interest-label">🍜 Foodie</label>
+                    <input type="checkbox" class="interest-check-p" value="14" id="p14"><label for="p14" class="interest-label">⚽ Sports</label>
+                    <input type="checkbox" class="interest-check-p" value="15" id="p15"><label for="p15" class="interest-label">🎤 Karaoke</label>
+                </div>
+                <div class="btn-group">
+                    <button type="button" class="btn-prev" onclick="prevStep(3)">Back</button>
+                    <button type="button" class="btn-next" onclick="handleNext(4, 5)">FINAL STEP</button>
+                </div>
+            </div>
+
+            <div class="form-step" id="step-5">
+                <h2 class="step-title">Last Vibe</h2>
+                <div class="avatar-display-area"><label class="avatar-wrapper"><input type="file" name="avatar" accept="image/*" hidden onchange="previewImage(event)" required><span class="material-icons" style="font-size: 45px; color:#ccc;">add_a_photo</span></label></div>
+                <div class="form-group" style="text-align: left;"><label style="font-weight:700;">Bio</label><textarea name="bio" required style="width:100%; height:80px; padding:12px; border-radius:10px; border:1px solid #eee;"></textarea></div>
+                <div class="btn-group">
+                    <button type="button" class="btn-prev" onclick="prevStep(4)">Back</button>
+                    <button type="button" class="btn-submit" id="submitBtn" onclick="finishRegistration()">START SYNC 💖</button>
+                </div>
+            </div>
+        </form>
+        <div class="login-redirect">Already have an account? <a href="login.html">Log in here</a></div>
+    </div>
+
+    <script>
+        function updateProgress(s){ for(let i=1;i<=5;i++) document.getElementById('dot-'+i).classList.toggle('active', i<=s); }
+        function validateCurrentStep(s){
+            const div = document.getElementById('step-'+s);
+            const inputs = div.querySelectorAll('input[required], select[required], textarea[required]');
+            for(let i of inputs) if(!i.value.trim()){ alert("Vui lòng điền đủ thông tin!"); return false; }
+            if(s===2 && document.getElementById('password').value !== document.getElementById('confirm_pw').value){ alert("Mật khẩu không khớp!"); return false; }
+            if(s===3 && div.querySelectorAll('.interest-check:checked').length < 3){ alert("Chọn ít nhất 3 sở thích!"); return false; }
+            if(s===4 && div.querySelectorAll('.interest-check-p:checked').length < 3){ alert("Chọn ít nhất 3 sở thích cho họ!"); return false; }
+            return true;
+        }
+        function handleNext(c, n){ if(validateCurrentStep(c)){ document.querySelectorAll('.form-step').forEach(e=>e.classList.remove('active')); document.getElementById('step-'+n).classList.add('active'); updateProgress(n); } }
+        function prevStep(s){ document.querySelectorAll('.form-step').forEach(e=>e.classList.remove('active')); document.getElementById('step-'+s).classList.add('active'); updateProgress(s); }
+        function previewImage(e){
+            const f = e.target.files[0];
+            if(f){
+                const r = new FileReader();
+                r.onload = function(ev){
+                    const l = e.target.closest('label');
+                    let i = l.querySelector('.preview-img') || document.createElement('img');
+                    i.className = 'preview-img'; i.src = ev.target.result; l.appendChild(i);
+                }; r.readAsDataURL(f);
+            }
+        }
+        async function finishRegistration(){
+            if(!validateCurrentStep(5)) return;
+            const btn = document.getElementById('submitBtn'); btn.innerText = "Syncing..."; btn.disabled = true;
+            const formData = new FormData(document.getElementById('registerForm'));
+            const myInts = Array.from(document.querySelectorAll('.interest-check:checked')).map(cb=>cb.value);
+            formData.append('interests', myInts.join(','));
+            try {
+                const res = await fetch('../api/register.php', { method: 'POST', body: formData });
+                const data = await res.json();
+                if(data.status === 'success'){ 
+                    alert("Đăng ký thành công!"); 
+                    // CHUYỂN TRANG SANG LOGIN SAU KHI THÀNH CÔNG
+                    window.location.href = 'login.html'; 
+                }
+                else { alert(data.message); btn.innerText = "START SYNC 💖"; btn.disabled = false; }
+            } catch(e){ alert("Lỗi kết nối!"); btn.innerText = "START SYNC 💖"; btn.disabled = false; }
+        }
+    </script>
+</body>
+</html>
