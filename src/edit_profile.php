@@ -17,19 +17,28 @@ function handleUpload($input_name, $current_val) {
 
 // XỬ LÝ LƯU DỮ LIỆU
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $nick = trim($_POST['nickname']); // Thêm biến lưu Nickname
-    $loc = $_POST['location']; $occ = $_POST['occupation']; $comp = $_POST['company'];
-    $bio = $_POST['bio']; $height = $_POST['height']; $edu = $_POST['education'];
-    $drink = $_POST['drinking']; $pets = $_POST['pets'];
+    // CHỐNG LỖI BAY MÀU DATA DO UP ẢNH QUÁ NẶNG
+    if (empty($_POST)) {
+        echo "<script>alert('LỖI: Ảnh bạn chọn quá nặng vượt giới hạn máy chủ! Hệ thống đã chặn để bảo vệ dữ liệu. Vui lòng chọn ảnh nhẹ hơn.'); window.location.href='edit_profile.php';</script>";
+        exit();
+    }
+
+    $nick = trim($_POST['nickname'] ?? '');
+    $loc = $_POST['location'] ?? ''; 
+    $occ = $_POST['occupation'] ?? ''; 
+    $comp = $_POST['company'] ?? '';
+    $bio = $_POST['bio'] ?? ''; 
+    $height = $_POST['height'] ?? ''; 
+    $edu = $_POST['education'] ?? '';
+    $drink = $_POST['drinking'] ?? ''; 
+    $pets = $_POST['pets'] ?? '';
 
     $p = [];
     for($i=1;$i<=6;$i++) { $p[$i] = handleUpload("photo_$i", $_POST["old_photo_$i"] ?? ''); }
 
-    // Update SQL thêm trường nickname
     $sql = "UPDATE profiles SET nickname=?, location=?, occupation=?, company=?, bio=?, height=?, education=?, drinking=?, pets=?, 
             photo_1=?, photo_2=?, photo_3=?, photo_4=?, photo_5=?, photo_6=? WHERE user_id=?";
     $stmt = $conn->prepare($sql);
-    // 15 chuỗi 's', 1 số nguyên 'i'
     $stmt->bind_param("sssssssssssssssi", $nick, $loc, $occ, $comp, $bio, $height, $edu, $drink, $pets, $p[1], $p[2], $p[3], $p[4], $p[5], $p[6], $user_id);
     $stmt->execute();
 
@@ -75,7 +84,7 @@ $my_interests_ids = array_column($stmt_my_int->get_result()->fetch_all(MYSQLI_AS
                         
                         <div class="form-group" style="margin-bottom: 15px;">
                             <label>Real Name (For verification only)</label>
-                            <input type="text" class="edit-input" value="<?= htmlspecialchars($current_user['full_name']) ?>" disabled style="background:#f5f5f5; cursor:not-allowed;">
+                            <input type="text" class="edit-input" value="<?= htmlspecialchars($current_user['full_name'] ?? '') ?>" disabled style="background:#f5f5f5; cursor:not-allowed;">
                         </div>
 
                         <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom: 15px;">
@@ -85,7 +94,7 @@ $my_interests_ids = array_column($stmt_my_int->get_result()->fetch_all(MYSQLI_AS
                             </div>
                             <div class="form-group">
                                 <label>Birthday</label>
-                                <input type="text" class="edit-input" value="<?= $current_user['dob'] ?>" disabled style="background:#f5f5f5; cursor:not-allowed;">
+                                <input type="text" class="edit-input" value="<?= htmlspecialchars($current_user['dob'] ?? '') ?>" disabled style="background:#f5f5f5; cursor:not-allowed;">
                             </div>
                         </div>
 
@@ -93,7 +102,7 @@ $my_interests_ids = array_column($stmt_my_int->get_result()->fetch_all(MYSQLI_AS
                         <div class="form-group"><label>Occupation</label><input type="text" name="occupation" class="edit-input" value="<?= htmlspecialchars($current_user['occupation'] ?? '') ?>"></div>
                         <div class="form-group"><label>Company</label><input type="text" name="company" class="edit-input" value="<?= htmlspecialchars($current_user['company'] ?? '') ?>"></div>
                     </div>
-                    <div class="edit-panel"><h3><i class="fa-solid fa-pen-nib"></i> About Me</h3><textarea name="bio" class="edit-input" style="height: 120px; resize:none;"><?= htmlspecialchars($current_user['bio']) ?></textarea></div>
+                    <div class="edit-panel"><h3><i class="fa-solid fa-pen-nib"></i> About Me</h3><textarea name="bio" class="edit-input" style="height: 120px; resize:none;"><?= htmlspecialchars($current_user['bio'] ?? '') ?></textarea></div>
                 </div>
                 <div>
                     <div class="edit-photo-grid" style="margin-bottom:30px;">
@@ -146,14 +155,27 @@ $my_interests_ids = array_column($stmt_my_int->get_result()->fetch_all(MYSQLI_AS
         function previewImage(event) {
             const input = event.target;
             if (input.files && input.files[0]) {
+                const file = input.files[0];
+                
+                // KIỂM TRA DUNG LƯỢNG ẢNH BẰNG JAVASCRIPT (Giới hạn 5MB)
+                if (file.size > 5 * 1024 * 1024) {
+                    alert('Ảnh này nặng quá 5MB rồi mày ơi! Chọn ảnh nhẹ hơn để không bị mất thông tin nhé!');
+                    input.value = ''; // Xóa file vừa chọn
+                    return;
+                }
+
                 const reader = new FileReader();
                 reader.onload = function(e) {
                     const slot = input.closest('.photo-slot');
                     let img = slot.querySelector('img');
-                    if (!img) { img = document.createElement('img'); img.style = "width:100%;height:100%;object-fit:cover;position:absolute;"; slot.prepend(img); }
+                    if (!img) { 
+                        img = document.createElement('img'); 
+                        img.style = "width:100%;height:100%;object-fit:cover;position:absolute;"; 
+                        slot.prepend(img); 
+                    }
                     img.src = e.target.result;
                 }
-                reader.readAsDataURL(input.files[0]);
+                reader.readAsDataURL(file);
             }
         }
     </script>

@@ -5,17 +5,14 @@ require_once '../api/db_connect.php';
 
 $user_id = $_SESSION['user_id'];
 
-// 1. LẤY THÔNG TIN CỦA CHÍNH MÌNH TỪ DB
 $stmt = $conn->prepare("SELECT * FROM profiles p JOIN users u ON p.user_id = u.id WHERE p.user_id = ?");
 $stmt->bind_param("i", $user_id);
 $stmt->execute();
 $current_user = $stmt->get_result()->fetch_assoc();
 
 $age = date_diff(date_create($current_user['dob']), date_create('today'))->y;
-// Ưu tiên hiển thị Nickname
 $display_name = !empty($current_user['nickname']) ? $current_user['nickname'] : $current_user['full_name'];
 
-// 2. LẤY SỞ THÍCH CỦA MÌNH
 $stmt_int = $conn->prepare("SELECT i.name FROM user_interests ui JOIN interests i ON ui.interest_id = i.id WHERE ui.user_id = ?");
 $stmt_int->bind_param("i", $user_id);
 $stmt_int->execute();
@@ -23,13 +20,11 @@ $interests_result = $stmt_int->get_result();
 $my_interests = [];
 while($row = $interests_result->fetch_assoc()) { $my_interests[] = $row['name']; }
 
-// Lấy 2 sở thích đầu làm Vibe
 $vibe_title = "Mysterious Vibe";
 if(count($my_interests) > 0) {
     $vibe_title = implode(" & ", array_slice($my_interests, 0, 2));
 }
 
-// 3. GOM TOÀN BỘ ẢNH VÀO MẢNG
 $my_photos = [];
 if (!empty($current_user['avatar'])) $my_photos[] = $current_user['avatar'];
 for ($i = 1; $i <= 6; $i++) {
@@ -37,7 +32,6 @@ for ($i = 1; $i <= 6; $i++) {
 }
 if (empty($my_photos)) $my_photos[] = 'default';
 
-// 4. XỬ LÝ TEXT TRỐNG
 $height = !empty($current_user['height']) ? $current_user['height'] : 'Not specified';
 $edu = !empty($current_user['education']) ? $current_user['education'] : 'Not specified';
 $drink = !empty($current_user['drinking']) ? $current_user['drinking'] : 'Not specified';
@@ -59,7 +53,7 @@ $pets = !empty($current_user['pets']) ? $current_user['pets'] : 'Not specified';
     <main class="preview-container">
         <h2 class="preview-title">This is how others see you</h2>
         
-        <div class="expanded-card" style="margin-bottom: 0;">
+        <div class="expanded-card">
             
             <div class="expanded-photo">
                 <?php foreach($my_photos as $index => $photo): ?>
@@ -73,8 +67,8 @@ $pets = !empty($current_user['pets']) ? $current_user['pets'] : 'Not specified';
 
                 <?php if(count($my_photos) > 1): ?>
                 <div class="carousel-nav">
-                    <button class="btn-carousel" onclick="changePhoto(-1)"><i class="fa-solid fa-chevron-left"></i></button>
-                    <button class="btn-carousel" onclick="changePhoto(1)"><i class="fa-solid fa-chevron-right"></i></button>
+                    <button class="btn-carousel" onclick="changePhoto(event, -1)"><i class="fa-solid fa-chevron-left"></i></button>
+                    <button class="btn-carousel" onclick="changePhoto(event, 1)"><i class="fa-solid fa-chevron-right"></i></button>
                 </div>
                 <?php endif; ?>
             </div>
@@ -131,8 +125,8 @@ $pets = !empty($current_user['pets']) ? $current_user['pets'] : 'Not specified';
     </main>
 
     <script>
-        function changePhoto(direction) {
-            const images = document.querySelectorAll('.expanded-photo .card-img');
+        function changePhotoAction(container, direction) {
+            const images = container.querySelectorAll('.card-img');
             if(images.length <= 1) return;
             
             let activeIndex = -1;
@@ -147,6 +141,22 @@ $pets = !empty($current_user['pets']) ? $current_user['pets'] : 'Not specified';
             
             images[newIndex].classList.add('active');
         }
+
+        function changePhoto(event, direction) {
+            const container = event.currentTarget.closest('.expanded-photo') || event.currentTarget.closest('.card-inner');
+            changePhotoAction(container, direction);
+        }
+
+        document.addEventListener('keydown', function(event) {
+            if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) return;
+            if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+
+            const topCard = document.querySelector('.expanded-card, .main-card');
+            if (!topCard) return;
+
+            const direction = event.key === 'ArrowLeft' ? -1 : 1;
+            changePhotoAction(topCard, direction);
+        });
     </script>
 </body>
 </html>

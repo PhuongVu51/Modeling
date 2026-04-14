@@ -36,41 +36,43 @@ while ($other = $others_result->fetch_assoc()) {
     }
 }
 usort($suggested_list, function($a, $b) { return $b['match_rate'] <=> $a['match_rate']; });
-$suggested = $suggested_list[0] ?? null;
 
-$compat_text = 'Potential Match';
-$suggested_photos = [];
-$suggested_name = 'Unknown';
-$suggested_age = 20;
-$sug_vibe_title = "Mysterious Vibe";
-$sug_height = $sug_edu = $sug_drink = $sug_pets = "-";
+// GOM DỮ LIỆU CỦA TOÀN BỘ NGƯỜI GỢI Ý ĐỂ XẾP THÀNH XẤP THẺ
+$cards_data = [];
+foreach ($suggested_list as $sug) {
+    $compat_text = 'Potential Match';
+    if ($sug['match_rate'] >= 90) { $compat_text = 'Soulmate Level'; }
+    elseif ($sug['match_rate'] >= 80) { $compat_text = 'High Compatibility'; }
+    elseif ($sug['match_rate'] >= 70) { $compat_text = 'Good Match'; }
 
-if ($suggested) {
-    if ($suggested['match_rate'] >= 90) { $compat_text = 'Soulmate Level'; }
-    elseif ($suggested['match_rate'] >= 80) { $compat_text = 'High Compatibility'; }
-    elseif ($suggested['match_rate'] >= 70) { $compat_text = 'Good Match'; }
-
-    if (!empty($suggested['avatar'])) $suggested_photos[] = $suggested['avatar'];
+    $photos = [];
+    if (!empty($sug['avatar'])) $photos[] = $sug['avatar'];
     for ($i = 1; $i <= 6; $i++) {
-        if (!empty($suggested["photo_$i"])) $suggested_photos[] = $suggested["photo_$i"];
+        if (!empty($sug["photo_$i"])) $photos[] = $sug["photo_$i"];
     }
-    if (empty($suggested_photos)) $suggested_photos[] = 'default';
+    if (empty($photos)) $photos[] = 'default';
 
-    $suggested_name = !empty($suggested['nickname']) ? $suggested['nickname'] : $suggested['full_name'];
-    $suggested_age = date_diff(date_create($suggested['dob']), date_create('today'))->y;
+    $sug['display_name'] = !empty($sug['nickname']) ? $sug['nickname'] : $sug['full_name'];
+    $sug['display_age'] = date_diff(date_create($sug['dob']), date_create('today'))->y;
+    $sug['photos'] = $photos;
+    $sug['compat_text'] = $compat_text;
+    
+    // Default info if empty
+    $sug['height'] = !empty($sug['height']) ? $sug['height'] : 'Not specified';
+    $sug['education'] = !empty($sug['education']) ? $sug['education'] : 'Not specified';
+    $sug['drinking'] = !empty($sug['drinking']) ? $sug['drinking'] : 'Not specified';
+    $sug['pets'] = !empty($sug['pets']) ? $sug['pets'] : 'Not specified';
 
-    $sug_height = !empty($suggested['height']) ? $suggested['height'] : 'Not specified';
-    $sug_edu = !empty($suggested['education']) ? $suggested['education'] : 'Not specified';
-    $sug_drink = !empty($suggested['drinking']) ? $suggested['drinking'] : 'Not specified';
-    $sug_pets = !empty($suggested['pets']) ? $suggested['pets'] : 'Not specified';
-
+    // Vibe cho từng thẻ
     $stmt_sug_int = $conn->prepare("SELECT i.name FROM user_interests ui JOIN interests i ON ui.interest_id = i.id WHERE ui.user_id = ? LIMIT 2");
-    $stmt_sug_int->bind_param("i", $suggested['user_id']);
+    $stmt_sug_int->bind_param("i", $sug['user_id']);
     $stmt_sug_int->execute();
     $sug_vibe_res = $stmt_sug_int->get_result();
     $sug_vibes = [];
     while($v = $sug_vibe_res->fetch_assoc()){ $sug_vibes[] = $v['name']; }
-    if(count($sug_vibes) > 0) { $sug_vibe_title = implode(" & ", $sug_vibes); }
+    $sug['vibe_title'] = count($sug_vibes) > 0 ? implode(" & ", $sug_vibes) : "Mysterious Vibe";
+    
+    $cards_data[] = $sug;
 }
 
 $messages = []; 
@@ -125,96 +127,107 @@ $your_vibe = count($vibes) > 0 ? implode(" & ", $vibes) : "Mysterious Vibe";
             </div>
         </aside>
 
-        <main class="main-feed">
+        <main class="main-feed" style="position: relative;">
             <div class="vibe-filter"><button class="btn-vibe"><i class="fa-solid fa-filter"></i> FILTER BY VIBE</button></div>
             
-            <?php if ($suggested): ?>
+            <div class="cards-stack">
+                <div class="expanded-card empty-state" style="display:flex; justify-content:center; align-items:center; flex-direction:column; z-index: 0;">
+                    <i class="fa-solid fa-radar" style="font-size:3rem; color:#ccc; margin-bottom:15px;"></i>
+                    <p style="color:#999; font-weight:600; font-size:1.2rem;">No more profiles in your area.</p>
+                </div>
+
+                <?php 
+                $z_index = 1;
+                foreach (array_reverse($cards_data) as $idx => $sug): 
+                ?>
+                <div class="expanded-card swipeable-card" id="card-<?= $sug['user_id'] ?>" style="z-index: <?= $z_index++; ?>;">
+                    
+                    <div class="expanded-photo">
+                        <?php foreach($sug['photos'] as $pIndex => $photo): ?>
+                            <img src="../uploads/<?= htmlspecialchars($photo) ?>" class="card-img <?= $pIndex === 0 ? 'active' : '' ?>" onerror="this.src='https://ui-avatars.com/api/?name=User&background=random'">
+                        <?php endforeach; ?>
+                        
+                        <div class="badge-container">
+                            <span class="badge-match" style="margin:0;"><?= $sug['match_rate'] ?>% SOULSYNC</span>
+                            <span class="badge-compat" style="margin:0; background:rgba(255,255,255,0.8); color:#e83e8c; font-weight:700; border: 1px solid #fff;"><?= $sug['compat_text'] ?></span>
+                        </div>
+
+                        <?php if(count($sug['photos']) > 1): ?>
+                        <div class="carousel-nav">
+                            <button class="btn-carousel" onclick="changePhoto(event, -1)"><i class="fa-solid fa-chevron-left"></i></button>
+                            <button class="btn-carousel" onclick="changePhoto(event, 1)"><i class="fa-solid fa-chevron-right"></i></button>
+                        </div>
+                        <?php endif; ?>
+                    </div>
+
+                    <div class="expanded-info">
+                        <h2><?= htmlspecialchars($sug['display_name']) ?>, <?= $sug['display_age'] ?></h2>
+                        <p class="distance"><i class="fa-solid fa-location-dot"></i> <?= htmlspecialchars($sug['location'] ?? 'Unknown Location') ?></p>
+                        
+                        <p class="bio-text">"<?= htmlspecialchars($sug['bio']) ?>"</p>
+                        
+                        <div class="expanded-tags">
+                            <span><i class="fa-solid fa-mug-hot"></i> Coffee Lovers</span>
+                            <span><i class="fa-solid fa-hand-sparkles"></i> Soul Matched</span>
+                        </div>
+
+                        <div class="info-vibe-box">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 5px;">
+                                <h4 style="margin:0; color:#5d1029; font-size:0.9rem;"><i class="fa-solid fa-wand-magic-sparkles"></i> Current Vibe</h4>
+                            </div>
+                            <div class="emoji">💗</div>
+                            <h4><?= htmlspecialchars($sug['vibe_title']) ?></h4>
+                            <p>People perceive this profile as peaceful and open-hearted.</p>
+                        </div>
+
+                        <div class="details-list">
+                            <h4><i class="fa-solid fa-sliders"></i> Personal Details</h4>
+                            <div class="detail-row">
+                                <span class="detail-label"><i class="fa-solid fa-ruler-vertical"></i> Height</span>
+                                <span class="detail-value"><?= htmlspecialchars($sug['height']) ?></span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label"><i class="fa-solid fa-graduation-cap"></i> Education</span>
+                                <span class="detail-value"><?= htmlspecialchars($sug['education']) ?></span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label"><i class="fa-solid fa-wine-glass"></i> Drinking</span>
+                                <span class="detail-value"><?= htmlspecialchars($sug['drinking']) ?></span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label"><i class="fa-solid fa-paw"></i> Pets</span>
+                                <span class="detail-value"><?= htmlspecialchars($sug['pets']) ?></span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="expanded-action-bar">
+                        <button class="act-btn close" onclick="swipeAction('left', this)"><i class="fa-solid fa-xmark"></i></button>
+                        <button class="act-btn like" onclick="swipeAction('right', this)"><i class="fa-solid fa-heart" style="font-size:1.3rem;"></i> LIKE</button>
+                        <button class="act-btn star" onclick="saveFavorite(this)"><i class="fa-solid fa-star"></i></button>
+                    </div>
+
+                </div>
+                <?php endforeach; ?>
+
+                <div class="ai-icebreaker-container">
+                    <div class="icebreaker-tooltip">Need an icebreaker?</div>
+                    <button class="btn-ai-bot"><i class="fa-solid fa-robot"></i></button>
+                </div>
+            </div>
             
-            <div class="expanded-card">
-                
-                <div class="expanded-photo">
-                    <?php foreach($suggested_photos as $index => $photo): ?>
-                        <img src="../uploads/<?= htmlspecialchars($photo) ?>" class="card-img <?= $index === 0 ? 'active' : '' ?>" onerror="this.src='https://ui-avatars.com/api/?name=User&background=random'">
-                    <?php endforeach; ?>
-                    
-                    <div class="badge-container">
-                        <span class="badge-match" style="margin:0;"><?= $suggested['match_rate'] ?>% SOULSYNC</span>
-                        <span class="badge-compat" style="margin:0; background:rgba(255,255,255,0.8); color:#e83e8c; font-weight:700; border: 1px solid #fff;"><?= $compat_text ?></span>
-                    </div>
-
-                    <?php if(count($suggested_photos) > 1): ?>
-                    <div class="carousel-nav">
-                        <button class="btn-carousel" onclick="changePhoto(-1)"><i class="fa-solid fa-chevron-left"></i></button>
-                        <button class="btn-carousel" onclick="changePhoto(1)"><i class="fa-solid fa-chevron-right"></i></button>
-                    </div>
-                    <?php endif; ?>
-                </div>
-
-                <div class="expanded-info">
-                    <h2><?= htmlspecialchars($suggested_name) ?>, <?= $suggested_age ?></h2>
-                    <p class="distance"><i class="fa-solid fa-location-dot"></i> <?= htmlspecialchars($suggested['location'] ?? 'Unknown Location') ?></p>
-                    
-                    <p class="bio-text">"<?= htmlspecialchars($suggested['bio']) ?>"</p>
-                    
-                    <div class="expanded-tags">
-                        <span><i class="fa-solid fa-mug-hot"></i> Coffee Lovers</span>
-                        <span><i class="fa-solid fa-hand-sparkles"></i> Soul Matched</span>
-                    </div>
-
-                    <div class="info-vibe-box">
-                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 5px;">
-                            <h4 style="margin:0; color:#5d1029; font-size:0.9rem;"><i class="fa-solid fa-wand-magic-sparkles"></i> Current Vibe</h4>
-                        </div>
-                        <div class="emoji">💗</div>
-                        <h4><?= htmlspecialchars($sug_vibe_title) ?></h4>
-                        <p>People perceive this profile as peaceful and open-hearted.</p>
-                    </div>
-
-                    <div class="details-list">
-                        <h4><i class="fa-solid fa-sliders"></i> Personal Details</h4>
-                        <div class="detail-row">
-                            <span class="detail-label"><i class="fa-solid fa-ruler-vertical"></i> Height</span>
-                            <span class="detail-value"><?= htmlspecialchars($sug_height) ?></span>
-                        </div>
-                        <div class="detail-row">
-                            <span class="detail-label"><i class="fa-solid fa-graduation-cap"></i> Education</span>
-                            <span class="detail-value"><?= htmlspecialchars($sug_edu) ?></span>
-                        </div>
-                        <div class="detail-row">
-                            <span class="detail-label"><i class="fa-solid fa-wine-glass"></i> Drinking</span>
-                            <span class="detail-value"><?= htmlspecialchars($sug_drink) ?></span>
-                        </div>
-                        <div class="detail-row">
-                            <span class="detail-label"><i class="fa-solid fa-paw"></i> Pets</span>
-                            <span class="detail-value"><?= htmlspecialchars($sug_pets) ?></span>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="expanded-action-bar">
-                    <button class="act-btn close"><i class="fa-solid fa-xmark"></i></button>
-                    <button class="act-btn like"><i class="fa-solid fa-heart" style="font-size:1.3rem;"></i> LIKE</button>
-                    <button class="act-btn star"><i class="fa-solid fa-star"></i></button>
-                </div>
-                
-            </div>
-
-            <div class="ai-icebreaker-container">
-                <div class="icebreaker-tooltip">Need an icebreaker?</div>
-                <button class="btn-ai-bot"><i class="fa-solid fa-robot"></i></button>
-            </div>
-            
-            <?php else: ?>
-            <div class="swipe-card empty" style="display:flex; justify-content:center; align-items:center; background:#fff; box-shadow: 0 20px 50px rgba(0,0,0,0.05);">
-                <p style="color:#999; font-weight:600;"><i class="fa-solid fa-radar"></i> Scanning your area...</p>
-            </div>
-            <?php endif; ?>
         </main>
     </div>
 
+    <div id="toast" class="toast-notification">
+        <i class="fa-solid fa-bookmark" style="color:#ff4b82;"></i> Saved to favorites
+    </div>
+
     <script>
-        function changePhoto(direction) {
-            const images = document.querySelectorAll('.expanded-photo .card-img');
+        // 1. Hàm lõi xử lý lướt ảnh (Dùng chung cho cả click chuột và bàn phím)
+        function changePhotoAction(container, direction) {
+            // Tìm tất cả ảnh trong cái thẻ hiện tại
+            const images = container.querySelectorAll('.card-img');
             if(images.length <= 1) return;
             
             let activeIndex = -1;
@@ -229,6 +242,79 @@ $your_vibe = count($vibes) > 0 ? implode(" & ", $vibes) : "Mysterious Vibe";
             
             images[newIndex].classList.add('active');
         }
+
+        // 2. Gắn vào nút bấm mũi tên trên UI
+        function changePhoto(event, direction) {
+            const container = event.currentTarget.closest('.expanded-photo') || event.currentTarget.closest('.card-inner');
+            changePhotoAction(container, direction);
+        }
+
+        // 3. Hàm Quẹt Thẻ (Swipe Left/Right)
+        function swipeAction(direction, btnElement) {
+            const card = btnElement.closest('.swipeable-card');
+            if (!card) return;
+            
+            if (direction === 'left') {
+                card.classList.add('swipe-left');
+            } else {
+                card.classList.add('swipe-right');
+            }
+
+            setTimeout(() => {
+                card.style.display = 'none';
+            }, 500); 
+        }
+
+        // 4. Hàm Lưu Yêu Thích & Hiện Toast
+        function saveFavorite(btnElement) {
+            btnElement.classList.toggle('saved');
+            
+            const toast = document.getElementById('toast');
+            if (!toast) return; // Bỏ qua nếu ko có thẻ toast (trang preview)
+
+            if (btnElement.classList.contains('saved')) {
+                toast.innerHTML = '<i class="fa-solid fa-bookmark" style="color:#ff4b82;"></i> Saved to your list!';
+            } else {
+                toast.innerHTML = '<i class="fa-regular fa-bookmark"></i> Removed from list';
+            }
+
+            toast.classList.add('show');
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 2500);
+        }
+
+        // ==========================================
+        // 5. LẮNG NGHE BÀN PHÍM (LEFT / RIGHT ARROW)
+        // ==========================================
+        document.addEventListener('keydown', function(event) {
+            // CHỐNG LỖI: Nếu đang gõ chữ vào ô Chat hoặc Input thì bỏ qua
+            if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) return;
+
+            // Chỉ nhận lệnh từ phím mũi tên Trái / Phải
+            if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+
+            // Tìm thẻ quẹt ĐANG HIỆN TRÊN CÙNG (bỏ qua mấy thẻ đã bị quẹt ẩn đi)
+            const visibleCards = Array.from(document.querySelectorAll('.swipeable-card')).filter(card => card.style.display !== 'none');
+            
+            let topCard = null;
+
+            if (visibleCards.length > 0) {
+                // Tìm thẻ có z-index lớn nhất (nằm trên cùng)
+                topCard = visibleCards.reduce((prev, current) => {
+                    return (parseInt(prev.style.zIndex) || 0) > (parseInt(current.style.zIndex) || 0) ? prev : current;
+                });
+            } else {
+                // Xử lý cho trang preview.php (chỉ có 1 thẻ, không phải xấp)
+                topCard = document.querySelector('.expanded-card, .main-card');
+            }
+
+            if (!topCard) return;
+
+            // Mũi tên trái = lùi ảnh (-1), Mũi tên phải = tiến ảnh (1)
+            const direction = event.key === 'ArrowLeft' ? -1 : 1;
+            changePhotoAction(topCard, direction);
+        });
     </script>
 </body>
 </html>
