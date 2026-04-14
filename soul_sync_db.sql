@@ -1,10 +1,12 @@
--- 1. Xóa các bảng cũ để tránh xung đột
+-- 1. Xóa các bảng cũ (Theo thứ tự từ bảng con đến bảng cha để tránh lỗi khóa ngoại)
+DROP TABLE IF EXISTS matches;
+DROP TABLE IF EXISTS likes;
 DROP TABLE IF EXISTS user_interests;
+DROP TABLE IF EXISTS interests;
 DROP TABLE IF EXISTS profiles;
 DROP TABLE IF EXISTS users;
-DROP TABLE IF EXISTS interests;
 
--- 2. Bảng Users 
+-- 2. Bảng Users (Lưu thông tin đăng nhập tài khoản)
 CREATE TABLE users (
     id INT AUTO_INCREMENT PRIMARY KEY,
     email VARCHAR(255) UNIQUE NOT NULL,
@@ -14,7 +16,7 @@ CREATE TABLE users (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- 3. Bảng Profiles (Đã mở rộng thành 6 slot ảnh)
+-- 3. Bảng Profiles (Lưu thông tin chi tiết hiển thị trên app)
 CREATE TABLE profiles (
     user_id INT PRIMARY KEY,
     full_name VARCHAR(255),
@@ -37,12 +39,12 @@ CREATE TABLE profiles (
     education VARCHAR(255),
     drinking VARCHAR(50),
     pets VARCHAR(100),
-    match_rate INT DEFAULT 84,
-    response_rate INT DEFAULT 92,
-    profile_views INT DEFAULT 1200,
-    current_vibe_title VARCHAR(100) DEFAULT 'Romantic & Calm',
-    current_vibe_desc TEXT DEFAULT 'People perceive your profile as peaceful and open-hearted.',
-    ai_feedback TEXT DEFAULT 'Your profile is performing well! We noticed that you get 3x more replies when your bio includes specific details about your hobbies.',
+    match_rate INT DEFAULT 0,
+    response_rate INT DEFAULT 0,
+    profile_views INT DEFAULT 0,
+    current_vibe_title VARCHAR(100) DEFAULT 'Mysterious Vibe',
+    current_vibe_desc TEXT DEFAULT 'People perceive this profile as peaceful and open-hearted.',
+    ai_feedback TEXT DEFAULT 'Profile của bạn đang khá trống. Hãy thêm sở thích và cập nhật Bio để tăng 50% tỉ lệ match nhé!',
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
@@ -52,7 +54,7 @@ CREATE TABLE interests (
     name VARCHAR(100) UNIQUE
 );
 
--- 5. Bảng trung gian
+-- 5. Bảng Trung gian (Nối User và Interests)
 CREATE TABLE user_interests (
     user_id INT,
     interest_id INT,
@@ -61,7 +63,28 @@ CREATE TABLE user_interests (
     FOREIGN KEY (interest_id) REFERENCES interests(id) ON DELETE CASCADE
 );
 
--- 6. Insert 15 sở thích chuẩn
+-- 6. Bảng Lưu trữ lịch sử Quẹt thẻ (Thích hoặc Bỏ qua)
+CREATE TABLE likes (
+    user_id INT,
+    liked_user_id INT,
+    is_like TINYINT(1) DEFAULT 1, -- 1 là Like, 0 là Pass (X)
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (user_id, liked_user_id),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (liked_user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- 7. Bảng Tương hợp (Lưu danh sách 2 người đã Match nhau)
+CREATE TABLE matches (
+    user1_id INT,
+    user2_id INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (user1_id, user2_id),
+    FOREIGN KEY (user1_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (user2_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- 8. Insert sẵn 15 sở thích chuẩn để hiển thị lên giao diện
 INSERT INTO interests (name) VALUES 
 ('Music'), ('Travel'), ('Coffee'), ('Reading'), ('Gym'), 
 ('Pets'), ('Movies'), ('Cooking'), ('Gaming'), ('Art'), 

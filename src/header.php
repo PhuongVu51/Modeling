@@ -14,7 +14,7 @@ if (!empty($current_user['avatar'])) {
     
     <div class="dash-nav-links">
         <a href="home.php" class="<?= basename($_SERVER['PHP_SELF']) == 'home.php' ? 'active' : '' ?>">HOME</a>
-        <a href="#">MATCHES</a>
+        <a href="matches.php" class="<?= basename($_SERVER['PHP_SELF']) == 'matches.php' ? 'active' : '' ?>">MATCHES</a>
         <a href="#">MESSAGES</a>
         <a href="#">EXPLORE</a>
         

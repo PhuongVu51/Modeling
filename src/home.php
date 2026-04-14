@@ -15,9 +15,14 @@ $stmt_my_int->bind_param("i", $user_id);
 $stmt_my_int->execute();
 $my_interests = array_column($stmt_my_int->get_result()->fetch_all(MYSQLI_ASSOC), 'interest_id');
 
-$stmt_others = $conn->prepare("SELECT * FROM profiles WHERE user_id != ? AND interested_in = ?");
+// Lấy danh sách gợi ý (BỎ QUA những người mình ĐÃ QUẸT TỪ TRƯỚC)
+$stmt_others = $conn->prepare("
+    SELECT * FROM profiles 
+    WHERE user_id != ? AND interested_in = ? 
+    AND user_id NOT IN (SELECT liked_user_id FROM likes WHERE user_id = ?)
+");
 $my_gender = $current_user['gender'];
-$stmt_others->bind_param("is", $user_id, $my_gender);
+$stmt_others->bind_param("isi", $user_id, $my_gender, $user_id);
 $stmt_others->execute();
 $others_result = $stmt_others->get_result();
 
@@ -37,7 +42,6 @@ while ($other = $others_result->fetch_assoc()) {
 }
 usort($suggested_list, function($a, $b) { return $b['match_rate'] <=> $a['match_rate']; });
 
-// GOM DỮ LIỆU CỦA TOÀN BỘ NGƯỜI GỢI Ý ĐỂ XẾP THÀNH XẤP THẺ
 $cards_data = [];
 foreach ($suggested_list as $sug) {
     $compat_text = 'Potential Match';
@@ -57,13 +61,11 @@ foreach ($suggested_list as $sug) {
     $sug['photos'] = $photos;
     $sug['compat_text'] = $compat_text;
     
-    // Default info if empty
     $sug['height'] = !empty($sug['height']) ? $sug['height'] : 'Not specified';
     $sug['education'] = !empty($sug['education']) ? $sug['education'] : 'Not specified';
     $sug['drinking'] = !empty($sug['drinking']) ? $sug['drinking'] : 'Not specified';
     $sug['pets'] = !empty($sug['pets']) ? $sug['pets'] : 'Not specified';
 
-    // Vibe cho từng thẻ
     $stmt_sug_int = $conn->prepare("SELECT i.name FROM user_interests ui JOIN interests i ON ui.interest_id = i.id WHERE ui.user_id = ? LIMIT 2");
     $stmt_sug_int->bind_param("i", $sug['user_id']);
     $stmt_sug_int->execute();
@@ -75,7 +77,22 @@ foreach ($suggested_list as $sug) {
     $cards_data[] = $sug;
 }
 
-$messages = []; 
+// LẤY DANH SÁCH MATCH ĐỂ IN VÀO CỘT CONVERSATIONS
+$stmt_matches = $conn->prepare("
+    SELECT p.*, m.created_at as match_date 
+    FROM matches m 
+    JOIN profiles p ON (p.user_id = m.user1_id OR p.user_id = m.user2_id) 
+    WHERE (m.user1_id = ? OR m.user2_id = ?) AND p.user_id != ?
+    ORDER BY m.created_at DESC
+");
+$stmt_matches->bind_param("iii", $user_id, $user_id, $user_id);
+$stmt_matches->execute();
+$matches_result = $stmt_matches->get_result();
+$messages = [];
+while($row = $matches_result->fetch_assoc()){
+    $messages[] = $row;
+}
+
 $match_rate_overall = count($messages) > 0 ? "78%" : "0%"; 
 $response_rate = count($messages) > 0 ? "92%" : "0%";
 
@@ -113,6 +130,19 @@ $your_vibe = count($vibes) > 0 ? implode(" & ", $vibes) : "Mysterious Vibe";
                             <i class="fa-solid fa-ghost" style="font-size:2rem; margin-bottom:10px; color:#e0e0e0;"></i><br>
                             You haven't matched with anyone yet.
                         </div>
+                    <?php else: ?>
+                        <?php foreach($messages as $msg): ?>
+                            <div class="chat-item">
+                                <img src="../uploads/<?= htmlspecialchars($msg['avatar']) ?>" class="chat-avatar" onerror="this.src='https://ui-avatars.com/api/?name=User&background=random'">
+                                <div class="chat-info">
+                                    <div class="chat-top">
+                                        <strong><?= htmlspecialchars($msg['nickname'] ?? $msg['full_name']) ?></strong>
+                                        <span class="time" style="color:var(--y2k-pink); font-weight:bold;">New</span>
+                                    </div>
+                                    <div class="preview-text">It's a match! Say hi 👋</div>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
                     <?php endif; ?>
                 </div>
             </div>
@@ -127,7 +157,7 @@ $your_vibe = count($vibes) > 0 ? implode(" & ", $vibes) : "Mysterious Vibe";
             </div>
         </aside>
 
-        <main class="main-feed" style="position: relative;">
+        <main class="main-feed">
             <div class="vibe-filter"><button class="btn-vibe"><i class="fa-solid fa-filter"></i> FILTER BY VIBE</button></div>
             
             <div class="cards-stack">
@@ -141,7 +171,6 @@ $your_vibe = count($vibes) > 0 ? implode(" & ", $vibes) : "Mysterious Vibe";
                 foreach (array_reverse($cards_data) as $idx => $sug): 
                 ?>
                 <div class="expanded-card swipeable-card" id="card-<?= $sug['user_id'] ?>" style="z-index: <?= $z_index++; ?>;">
-                    
                     <div class="expanded-photo">
                         <?php foreach($sug['photos'] as $pIndex => $photo): ?>
                             <img src="../uploads/<?= htmlspecialchars($photo) ?>" class="card-img <?= $pIndex === 0 ? 'active' : '' ?>" onerror="this.src='https://ui-avatars.com/api/?name=User&background=random'">
@@ -206,7 +235,6 @@ $your_vibe = count($vibes) > 0 ? implode(" & ", $vibes) : "Mysterious Vibe";
                         <button class="act-btn like" onclick="swipeAction('right', this)"><i class="fa-solid fa-heart" style="font-size:1.3rem;"></i> LIKE</button>
                         <button class="act-btn star" onclick="saveFavorite(this)"><i class="fa-solid fa-star"></i></button>
                     </div>
-
                 </div>
                 <?php endforeach; ?>
 
@@ -215,44 +243,37 @@ $your_vibe = count($vibes) > 0 ? implode(" & ", $vibes) : "Mysterious Vibe";
                     <button class="btn-ai-bot"><i class="fa-solid fa-robot"></i></button>
                 </div>
             </div>
-            
         </main>
     </div>
 
-    <div id="toast" class="toast-notification">
-        <i class="fa-solid fa-bookmark" style="color:#ff4b82;"></i> Saved to favorites
-    </div>
+    <div id="toast" class="toast-notification"></div>
 
     <script>
-        // 1. Hàm lõi xử lý lướt ảnh (Dùng chung cho cả click chuột và bàn phím)
         function changePhotoAction(container, direction) {
-            // Tìm tất cả ảnh trong cái thẻ hiện tại
             const images = container.querySelectorAll('.card-img');
             if(images.length <= 1) return;
-            
             let activeIndex = -1;
             images.forEach((img, index) => {
                 if(img.classList.contains('active')) activeIndex = index;
                 img.classList.remove('active');
             });
-            
             let newIndex = activeIndex + direction;
             if(newIndex >= images.length) newIndex = 0;
             if(newIndex < 0) newIndex = images.length - 1;
-            
             images[newIndex].classList.add('active');
         }
 
-        // 2. Gắn vào nút bấm mũi tên trên UI
         function changePhoto(event, direction) {
             const container = event.currentTarget.closest('.expanded-photo') || event.currentTarget.closest('.card-inner');
             changePhotoAction(container, direction);
         }
 
-        // 3. Hàm Quẹt Thẻ (Swipe Left/Right)
         function swipeAction(direction, btnElement) {
             const card = btnElement.closest('.swipeable-card');
             if (!card) return;
+            
+            const targetId = card.id.replace('card-', '');
+            const actionType = direction === 'right' ? 'like' : 'pass';
             
             if (direction === 'left') {
                 card.classList.add('swipe-left');
@@ -260,58 +281,63 @@ $your_vibe = count($vibes) > 0 ? implode(" & ", $vibes) : "Mysterious Vibe";
                 card.classList.add('swipe-right');
             }
 
-            setTimeout(() => {
-                card.style.display = 'none';
-            }, 500); 
+            // GỌI API ĐỂ MATCH
+            fetch('../api/like.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ target_user_id: targetId, action: actionType })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if(data.is_match) {
+                    const toast = document.getElementById('toast');
+                    toast.innerHTML = '<i class="fa-solid fa-heart" style="color:#fff;"></i> IT\'S A MATCH! 🎉';
+                    toast.style.background = 'var(--y2k-gradient)';
+                    toast.classList.add('show');
+                    
+                    // Reload lại trang sau 2 giây để người đó nhảy vào mục trò chuyện
+                    setTimeout(() => { 
+                        toast.classList.remove('show'); 
+                        window.location.reload(); 
+                    }, 2000);
+                }
+            });
+
+            setTimeout(() => { card.style.display = 'none'; }, 500); 
         }
 
-        // 4. Hàm Lưu Yêu Thích & Hiện Toast
         function saveFavorite(btnElement) {
             btnElement.classList.toggle('saved');
-            
             const toast = document.getElementById('toast');
-            if (!toast) return; // Bỏ qua nếu ko có thẻ toast (trang preview)
-
+            if (!toast) return;
+            toast.style.background = 'rgba(0, 0, 0, 0.85)';
             if (btnElement.classList.contains('saved')) {
                 toast.innerHTML = '<i class="fa-solid fa-bookmark" style="color:#ff4b82;"></i> Saved to your list!';
             } else {
                 toast.innerHTML = '<i class="fa-regular fa-bookmark"></i> Removed from list';
             }
-
             toast.classList.add('show');
-            setTimeout(() => {
-                toast.classList.remove('show');
-            }, 2500);
+            setTimeout(() => { toast.classList.remove('show'); }, 2500);
         }
 
-        // ==========================================
-        // 5. LẮNG NGHE BÀN PHÍM (LEFT / RIGHT ARROW)
-        // ==========================================
+        // BẮT SỰ KIỆN BÀN PHÍM
         document.addEventListener('keydown', function(event) {
-            // CHỐNG LỖI: Nếu đang gõ chữ vào ô Chat hoặc Input thì bỏ qua
             if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) return;
-
-            // Chỉ nhận lệnh từ phím mũi tên Trái / Phải
             if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
 
-            // Tìm thẻ quẹt ĐANG HIỆN TRÊN CÙNG (bỏ qua mấy thẻ đã bị quẹt ẩn đi)
             const visibleCards = Array.from(document.querySelectorAll('.swipeable-card')).filter(card => card.style.display !== 'none');
             
             let topCard = null;
-
             if (visibleCards.length > 0) {
-                // Tìm thẻ có z-index lớn nhất (nằm trên cùng)
                 topCard = visibleCards.reduce((prev, current) => {
                     return (parseInt(prev.style.zIndex) || 0) > (parseInt(current.style.zIndex) || 0) ? prev : current;
                 });
             } else {
-                // Xử lý cho trang preview.php (chỉ có 1 thẻ, không phải xấp)
                 topCard = document.querySelector('.expanded-card, .main-card');
             }
 
             if (!topCard) return;
 
-            // Mũi tên trái = lùi ảnh (-1), Mũi tên phải = tiến ảnh (1)
             const direction = event.key === 'ArrowLeft' ? -1 : 1;
             changePhotoAction(topCard, direction);
         });
