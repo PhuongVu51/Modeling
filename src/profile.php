@@ -17,8 +17,54 @@ while($row = $interests_result->fetch_assoc()) { $my_interests[] = $row['name'];
 
 $interest_icons = ['Music' => '🎸', 'Travel' => '✈️', 'Coffee' => '☕', 'Reading' => '📚', 'Gym' => '💪', 'Pets' => '🐾', 'Movies' => '🍿', 'Cooking' => '🍳', 'Gaming' => '🎮', 'Art' => '🎨', 'Photography' => '📸', 'Dancing' => '💃', 'Foodie' => '🍜', 'Sports' => '⚽', 'Karaoke' => '🎤'];
 
-// LOGIC HIỂN THỊ TÊN: Ưu tiên Nickname, nếu rỗng thì mới lấy Tên thật
 $display_name = !empty($current_user['nickname']) ? $current_user['nickname'] : $current_user['full_name'];
+
+// ==========================================
+// TÍNH TOÁN THỐNG KÊ THỰC TẾ 100% TỪ DATABASE
+// ==========================================
+
+// 1. Đếm tổng số Matches THẬT của user này
+$stmt_matches = $conn->prepare("SELECT COUNT(*) as total FROM matches WHERE user1_id = ? OR user2_id = ?");
+$stmt_matches->bind_param("ii", $user_id, $user_id);
+$stmt_matches->execute();
+$total_matches = $stmt_matches->get_result()->fetch_assoc()['total'];
+
+// 2. Đếm số lượt View THẬT (Từ bảng likes)
+$stmt_views = $conn->prepare("SELECT COUNT(*) as total FROM likes WHERE liked_user_id = ?");
+$stmt_views->bind_param("i", $user_id);
+$stmt_views->execute();
+$real_views = $stmt_views->get_result()->fetch_assoc()['total'];
+
+// 3. Tính Match Rate (%)
+$match_rate = 0;
+if ($real_views > 0) {
+    $match_rate = min(100, round(($total_matches / $real_views) * 100)); 
+}
+
+// 4. Tính Response Rate (%) THỰC TẾ
+// Lấy số lượng người (receiver_id) khác nhau mà user này đã gửi tin nhắn
+$stmt_responded = $conn->prepare("SELECT COUNT(DISTINCT receiver_id) as total_replied FROM messages WHERE sender_id = ?");
+$stmt_responded->bind_param("i", $user_id);
+$stmt_responded->execute();
+$total_replied = $stmt_responded->get_result()->fetch_assoc()['total_replied'];
+
+$response_rate = 0;
+if ($total_matches > 0) {
+    // Tỷ lệ = (Số người đã nhắn tin / Tổng số Match) * 100
+    $response_rate = min(100, round(($total_replied / $total_matches) * 100));
+}
+
+// Gắn nhãn văn bản bên dưới số liệu cho sinh động
+$match_text = $total_matches > 0 ? "You have $total_matches matches!" : "New account";
+$views_text = $real_views > 0 ? "Gaining attention" : "Awaiting visitors";
+
+$response_text = "No messages yet";
+if ($response_rate >= 80) {
+    $response_text = "Very responsive";
+} elseif ($response_rate > 0) {
+    $response_text = "Active chatter";
+}
+
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -45,11 +91,28 @@ $display_name = !empty($current_user['nickname']) ? $current_user['nickname'] : 
             </div>
             <div class="profile-actions"><a href="edit_profile.php" class="btn-edit">Edit Profile</a><a href="preview.php" class="btn-preview">Preview</a></div>
         </div>
+        
         <div class="stats-grid">
-            <div class="stat-card"><i class="fa-regular fa-heart" style="position:absolute;right:25px;color:#e83e8c;"></i><h4>Match Rate</h4><div class="number">0%</div><p style="color:#999;font-size:0.8rem;">New account</p></div>
-            <div class="stat-card"><i class="fa-regular fa-comment" style="position:absolute;right:25px;color:#e83e8c;"></i><h4>Response Rate</h4><div class="number">0%</div><p style="color:#999;font-size:0.8rem;">No messages</p></div>
-            <div class="stat-card"><i class="fa-regular fa-eye" style="position:absolute;right:25px;color:#e83e8c;"></i><h4>Profile Views</h4><div class="number">0</div><p style="color:#999;font-size:0.8rem;">Awaiting visitors</p></div>
+            <div class="stat-card">
+                <i class="fa-regular fa-heart" style="position:absolute;right:25px;color:#e83e8c;"></i>
+                <h4>Match Rate</h4>
+                <div class="number"><?= $match_rate ?>%</div>
+                <p style="color:#999;font-size:0.8rem;"><?= $match_text ?></p>
+            </div>
+            <div class="stat-card">
+                <i class="fa-regular fa-comment" style="position:absolute;right:25px;color:#e83e8c;"></i>
+                <h4>Response Rate</h4>
+                <div class="number"><?= $response_rate ?>%</div>
+                <p style="color:#999;font-size:0.8rem;"><?= $response_text ?></p>
+            </div>
+            <div class="stat-card">
+                <i class="fa-regular fa-eye" style="position:absolute;right:25px;color:#e83e8c;"></i>
+                <h4>Profile Views</h4>
+                <div class="number"><?= $real_views ?></div>
+                <p style="color:#999;font-size:0.8rem;"><?= $views_text ?></p>
+            </div>
         </div>
+
         <div class="vibe-ai-grid">
             <div class="edit-panel" style="text-align:center;background:#fff5f8;"><h3>💗 Your Current Vibe</h3><div style="font-size:3rem;">🔍</div><p>AI is analyzing your vibes based on your <b><?= count($my_interests) ?> interests</b>.</p></div>
             <div class="ai-feedback-card"><h3><i class="fa-solid fa-lightbulb"></i> AI Feedback</h3><p>Keep swiping and matching to let our AI learn your style! Your profile is <b>60% complete</b>.</p><button onclick="window.location.href='home.php'" style="background:#fff;color:#5d1029;padding:12px;border-radius:12px;font-weight:800;border:none;cursor:pointer;">Start Matching Now</button></div>

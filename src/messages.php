@@ -1,0 +1,422 @@
+<?php
+session_start();
+if (!isset($_SESSION['user_id'])) { header("Location: login.html"); exit(); }
+require_once '../api/db_connect.php';
+
+$user_id = $_SESSION['user_id'];
+$mode = $_GET['mode'] ?? 'standard';
+
+$stmt = $conn->prepare("SELECT * FROM profiles p JOIN users u ON p.user_id = u.id WHERE p.user_id = ?");
+$stmt->bind_param("i", $user_id); $stmt->execute();
+$current_user = $stmt->get_result()->fetch_assoc();
+$is_waiting_blind = $current_user['is_waiting_blind']; // Xem có đang xếp hàng không
+
+// FETCH TOÀN BỘ MATCHES
+$stmt_matches = $conn->prepare("
+    SELECT p.*, m.created_at as match_date, m.streak_count, m.last_interact_date, m.is_blind, m.is_revealed 
+    FROM matches m 
+    JOIN profiles p ON (p.user_id = m.user1_id OR p.user_id = m.user2_id) 
+    WHERE (m.user1_id = ? OR m.user2_id = ?) AND p.user_id != ?
+    ORDER BY m.created_at DESC
+");
+$stmt_matches->bind_param("iii", $user_id, $user_id, $user_id);
+$stmt_matches->execute();
+$matches_result = $stmt_matches->get_result();
+
+$standard_matches = [];
+$blind_matches = [];
+$today = date('Y-m-d');
+$yesterday = date('Y-m-d', strtotime('-1 day'));
+
+$blind_counter = 1; 
+
+while($row = $matches_result->fetch_assoc()){
+    $row['display_name'] = !empty($row['nickname']) ? $row['nickname'] : $row['full_name'];
+    $row['age'] = date_diff(date_create($row['dob']), date_create('today'))->y;
+    
+    if (empty($row['last_interact_date'])) {
+        $row['display_streak'] = $row['streak_count'];
+    } elseif ($row['last_interact_date'] != $today && $row['last_interact_date'] != $yesterday) {
+        $row['display_streak'] = 0;
+    } else {
+        $row['display_streak'] = $row['streak_count'];
+    }
+    
+    // BẢO MẬT TUYỆT ĐỐI: Phân loại rạch ròi 2 bên
+    if ($row['is_blind'] == 1 && $row['is_revealed'] == 0) {
+        $row['blind_name'] = "Mystery Soul #" . $blind_counter++;
+        $blind_matches[] = $row;
+    } else {
+        $standard_matches[] = $row;
+    }
+}
+
+$active_matches = ($mode === 'blind') ? $blind_matches : $standard_matches;
+
+$chat_with_id = isset($_GET['chat_with']) ? intval($_GET['chat_with']) : 0;
+$chat_partner = null;
+$chat_history = [];
+$connection_percent = 0;
+
+if ($chat_with_id > 0) {
+    foreach ($active_matches as $m) {
+        if ($m['user_id'] == $chat_with_id) {
+            $chat_partner = $m;
+            break;
+        }
+    }
+    if ($chat_partner) {
+        $stmt_msg = $conn->prepare("
+            SELECT * FROM messages 
+            WHERE (sender_id = ? AND receiver_id = ?) 
+               OR (sender_id = ? AND receiver_id = ?)
+            ORDER BY created_at ASC
+        ");
+        $stmt_msg->bind_param("iiii", $user_id, $chat_with_id, $chat_with_id, $user_id);
+        $stmt_msg->execute();
+        $history_res = $stmt_msg->get_result();
+        while($msg = $history_res->fetch_assoc()) {
+            $chat_history[] = $msg;
+        }
+
+        if ($mode === 'blind') {
+            $connection_percent = min(100, ($chat_partner['display_streak'] / 5) * 100);
+        }
+    }
+}
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>SoulSync - Messages</title>
+    <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="../assets/style.css?v=<?= time() ?>">
+    <style>
+        /* Thêm animation cho nút xoay vòng lúc chờ ghép đôi */
+        @keyframes spinPulse { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .btn-waiting { background: #3d2f50 !important; color: #ffb3d1 !important; }
+        .btn-waiting i { animation: spinPulse 1.5s linear infinite; }
+    </style>
+</head>
+<body class="dashboard-body" style="overflow: hidden; background: <?= $mode === 'blind' ? '#1f182b' : '#fbfbfb' ?>;">
+
+    <?php include 'header.php'; ?>
+
+    <div class="messenger-wrapper <?= $mode === 'blind' ? 'blind-wrapper' : '' ?>">
+        
+        <aside class="msg-sidebar <?= $mode === 'blind' ? 'blind-sidebar' : '' ?>">
+            <div class="mode-toggle">
+                <button class="<?= $mode === 'standard' ? 'active' : '' ?>" onclick="window.location.href='messages.php?mode=standard'">Standard Mode</button>
+                <button class="<?= $mode === 'blind' ? 'active' : '' ?>" onclick="window.location.href='messages.php?mode=blind'">Blind Mode</button>
+            </div>
+
+            <?php if($mode === 'standard'): ?>
+                <div class="matches-section">
+                    <h3>Matches</h3>
+                    <div class="matches-scroll">
+                        <?php if(empty($standard_matches)): ?>
+                            <p style="font-size:0.8rem; color:#999;">No matches yet.</p>
+                        <?php else: ?>
+                            <?php foreach($standard_matches as $m): ?>
+                                <a href="messages.php?mode=standard&chat_with=<?= $m['user_id'] ?>" class="match-avatar-col">
+                                    <div class="match-avatar-wrap">
+                                        <img src="../uploads/<?= htmlspecialchars($m['avatar'] ?: 'default.jpg') ?>" onerror="this.src='https://ui-avatars.com/api/?name=User'">
+                                        <div class="online-dot"></div>
+                                    </div>
+                                    <span><?= htmlspecialchars(explode(' ', $m['display_name'])[0]) ?></span>
+                                </a>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            <?php else: ?>
+                <div style="padding: 20px;">
+                    <div style="background:rgba(255,255,255,0.05); border-radius:15px; padding:15px; margin-bottom:15px; display:flex; align-items:center; gap:10px; color:#fff; border: 1px solid rgba(255,75,130,0.3);">
+                        <i class="fa-solid fa-mask" style="color:var(--y2k-hot-pink);"></i> <strong>Blind Chats</strong>
+                    </div>
+                    <div style="padding:15px; display:flex; align-items:center; gap:10px; color:#888; cursor:pointer;" onclick="window.location.href='messages.php?mode=standard'">
+                        <i class="fa-solid fa-eye"></i> Revealed
+                    </div>
+                </div>
+            <?php endif; ?>
+
+            <div class="msg-list-section">
+                <h3>Messages</h3>
+                <div class="msg-search <?= $mode === 'blind' ? 'blind-search' : '' ?>">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <input type="text" placeholder="Search messages">
+                </div>
+
+                <div class="chat-threads">
+                    <?php foreach($active_matches as $m): ?>
+                        <a href="messages.php?mode=<?= $mode ?>&chat_with=<?= $m['user_id'] ?>" class="chat-thread <?= ($chat_with_id == $m['user_id']) ? 'active' : '' ?>">
+                            <?php if($mode === 'blind'): ?>
+                                <div class="thread-avatar blind-avatar-placeholder" style="background:var(--y2k-hot-pink); border:none;"></div>
+                            <?php else: ?>
+                                <img src="../uploads/<?= htmlspecialchars($m['avatar'] ?: 'default.jpg') ?>" class="thread-avatar" onerror="this.src='https://ui-avatars.com/api/?name=User'">
+                            <?php endif; ?>
+                            
+                            <div class="thread-info">
+                                <div class="thread-top">
+                                    <strong>
+                                        <?= $mode === 'blind' ? $m['blind_name'] : htmlspecialchars($m['display_name']) ?> 
+                                        <?php if($m['display_streak'] >= 3): ?>
+                                            <span style="color:#ff4b82; font-size:0.85rem; font-weight:800; margin-left:5px;"><i class="fa-solid fa-fire"></i> <?= $m['display_streak'] ?></span>
+                                        <?php endif; ?>
+                                    </strong>
+                                </div>
+                                <div class="thread-preview">Tap to view conversation...</div>
+                            </div>
+                        </a>
+                    <?php endforeach; ?>
+                </div>
+
+                <?php if($mode === 'blind'): ?>
+                    <?php if($is_waiting_blind): ?>
+                        <button id="btnBlindDate" class="btn-new-blind btn-waiting" onclick="cancelBlindDate()">
+                            <i class="fa-solid fa-spinner"></i> Scanning souls... (Cancel)
+                        </button>
+                    <?php else: ?>
+                        <button id="btnBlindDate" class="btn-new-blind" onclick="startNewBlindDate()">
+                            <i class="fa-solid fa-circle-plus"></i> New Blind Date
+                        </button>
+                    <?php endif; ?>
+                <?php endif; ?>
+
+            </div>
+        </aside>
+
+        <?php if ($chat_partner): ?>
+            <?php if($mode === 'blind'): ?>
+            <main class="blind-main">
+                <div class="blind-chat-area">
+                    <div class="blind-chat-header">
+                        <div class="blind-avatar-placeholder"></div>
+                        <div class="chat-header-text" style="margin-left: 15px;">
+                            <h2 style="color:#fff; font-size:1.2rem; margin-bottom:0; display:flex; align-items:center; gap:10px;">
+                                <?= $chat_partner['blind_name'] ?>
+                                <span style="background:#fff; color:var(--y2k-hot-pink); font-size:0.6rem; padding:3px 8px; border-radius:50px;">SOUL SYNC</span>
+                            </h2>
+                            <p style="color:rgba(255,255,255,0.7); font-size:0.75rem;"><span style="background:#ffb3d1; color:#a82253; padding:2px 6px; border-radius:5px; font-weight:bold; margin-right:5px;">PLAYFUL</span> Typing...</p>
+                        </div>
+                        <div class="connection-bar-wrap">
+                            <span class="conn-text">CONNECTION</span>
+                            <div class="conn-bar-bg"><div class="conn-bar-fill" style="width: <?= $connection_percent ?>%;"></div></div>
+                            <span class="conn-text"><?= $connection_percent ?>%</span>
+                        </div>
+                    </div>
+                    <div class="chat-history" id="chatHistory">
+                        <div class="chat-date-divider"><span style="background:#16111f; color:#888; border-color:rgba(255,255,255,0.1);">TODAY</span></div>
+                        <?php foreach($chat_history as $msg): $is_me = ($msg['sender_id'] == $user_id); ?>
+                            <div class="msg-row <?= $is_me ? 'me' : 'them' ?>">
+                                <?php if(!$is_me): ?><div class="blind-avatar-placeholder" style="width:35px; height:35px; font-size:0.8rem;"></div><?php endif; ?>
+                                <div class="msg-bubble-wrap">
+                                    <div class="msg-bubble"><?= htmlspecialchars($msg['message_text']) ?></div>
+                                    <div class="msg-meta"><?= date("h:i A", strtotime($msg['created_at'])) ?> <?php if($is_me): ?><i class="fa-solid fa-check-double"></i><?php endif; ?></div>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                    <div class="chat-input-wrapper">
+                        <div class="ai-prompts">
+                            <span onclick="insertPrompt('Ask about hobbies')"><i class="fa-solid fa-wand-magic-sparkles"></i> Ask about hobbies</span>
+                        </div>
+                        <div class="chat-input-box">
+                            <input type="text" id="msgInput" placeholder="Whisper your soul's truth..." onkeypress="handleKeyPress(event)">
+                            <button class="btn-send" onclick="sendMessage()"><i class="fa-solid fa-paper-plane"></i></button>
+                        </div>
+                    </div>
+                </div>
+                <div class="blind-right-bar">
+                    <p class="sparks-title">MATCH IDENTITY</p>
+                    <div class="identity-card">
+                        <i class="fa-solid fa-lock"></i><h4>Identity Encrypted</h4>
+                        <p>The face behind the mask will be revealed at 100% connection level.</p>
+                        <?php if($connection_percent < 100): ?>
+                            <button class="btn-unlock-info"><?= 100 - $connection_percent ?>% more to Unlock</button>
+                        <?php else: ?>
+                            <button class="btn-unlock-info" style="background:var(--y2k-gradient); color:#fff; border:none;" onclick="showRevealModal()">READY TO REVEAL</button>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </main>
+            <?php else: ?>
+            <main class="msg-main">
+                <div class="chat-header">
+                    <div class="chat-header-info">
+                        <img src="../uploads/<?= htmlspecialchars($chat_partner['avatar'] ?: 'default.jpg') ?>" onerror="this.src='https://ui-avatars.com/api/?name=User'">
+                        <div class="chat-header-text">
+                            <h2 style="display: flex; align-items: center; gap: 8px;">
+                                <?= htmlspecialchars($chat_partner['display_name']) ?>, <?= $chat_partner['age'] ?> 
+                                <?php if($chat_partner['display_streak'] >= 3): ?>
+                                    <span style="color:#ff4b82; font-size:1rem; font-weight:800;"><i class="fa-solid fa-fire"></i> <?= $chat_partner['display_streak'] ?></span>
+                                <?php endif; ?>
+                            </h2>
+                            <p><i class="fa-solid fa-circle" style="font-size:0.5rem; margin-right:5px;"></i> Active now</p>
+                        </div>
+                    </div>
+                    <div class="chat-header-actions"><i class="fa-solid fa-video"></i><i class="fa-solid fa-phone"></i></div>
+                </div>
+                <div class="chat-history" id="chatHistory">
+                    <?php foreach($chat_history as $msg): $is_me = ($msg['sender_id'] == $user_id); ?>
+                        <div class="msg-row <?= $is_me ? 'me' : 'them' ?>">
+                            <?php if(!$is_me): ?><img src="../uploads/<?= htmlspecialchars($chat_partner['avatar'] ?: 'default.jpg') ?>" onerror="this.src='https://ui-avatars.com/api/?name=U'"><?php endif; ?>
+                            <div class="msg-bubble-wrap">
+                                <div class="msg-bubble"><?= htmlspecialchars($msg['message_text']) ?></div>
+                                <div class="msg-meta"><?= date("h:i A", strtotime($msg['created_at'])) ?> <?php if($is_me): ?><i class="fa-solid fa-check-double"></i><?php endif; ?></div>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+                <div class="chat-input-wrapper">
+                    <div class="chat-input-box">
+                        <input type="text" id="msgInput" placeholder="Type a message..." onkeypress="handleKeyPress(event)">
+                        <button class="btn-send" onclick="sendMessage()"><i class="fa-solid fa-paper-plane"></i></button>
+                    </div>
+                </div>
+            </main>
+            <?php endif; ?>
+
+        <?php else: ?>
+            <main class="msg-main empty-chat" style="<?= $mode === 'blind' ? 'background:#251c33; color:#666;' : '' ?>">
+                <i class="fa-regular fa-comments"></i>
+                <h2>Your Messages</h2>
+                <p>Select a match from the sidebar to start syncing souls.</p>
+            </main>
+        <?php endif; ?>
+
+    </div>
+
+    <div id="revealModal" class="reveal-modal-overlay">
+        <div class="reveal-modal">
+            <div class="reveal-badge"><i class="fa-solid fa-bolt"></i> CONNECTION PEAK REACHED</div>
+            <h2>Amazing! Connection Level reached 100%.</h2>
+            <p>The masks are ready to fall. Make your final decision.</p>
+            <div class="reveal-actions">
+                <button class="btn-reveal-yes" onclick="confirmReveal()"><i class="fa-solid fa-heart"></i> Reveal Identity</button>
+                <button class="btn-reveal-no" onclick="closeRevealModal()"><i class="fa-solid fa-eye-slash"></i> Stay Anonymous</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const chatHistory = document.getElementById('chatHistory');
+        if (chatHistory) chatHistory.scrollTop = chatHistory.scrollHeight;
+
+        function insertPrompt(text) { document.getElementById('msgInput').value = text; document.getElementById('msgInput').focus(); }
+        function handleKeyPress(e) { if (e.key === 'Enter') sendMessage(); }
+
+        function sendMessage() {
+            const input = document.getElementById('msgInput');
+            const text = input.value.trim();
+            if (!text) return;
+            const receiverId = <?= $chat_partner ? $chat_partner['user_id'] : 0 ?>;
+            if (receiverId === 0) return;
+
+            const timeNow = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const msgHtml = `<div class="msg-row me"><div class="msg-bubble-wrap"><div class="msg-bubble">${text}</div><div class="msg-meta">${timeNow} <i class="fa-solid fa-check"></i></div></div></div>`;
+            chatHistory.insertAdjacentHTML('beforeend', msgHtml);
+            chatHistory.scrollTop = chatHistory.scrollHeight; 
+            input.value = ''; 
+
+            fetch('../api/send_message.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ receiver_id: receiverId, message_text: text })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if(data.status === 'success') {
+                    const lastMsgMeta = chatHistory.lastElementChild.querySelector('.msg-meta i');
+                    if(lastMsgMeta) { lastMsgMeta.className = 'fa-solid fa-check-double'; }
+                    setTimeout(() => window.location.reload(), 1000);
+                }
+            });
+        }
+
+        // ==========================================
+        // LOGIC TÌM KIẾM BLIND DATE THỰC TẾ
+        // ==========================================
+        let pollInterval;
+
+        function startNewBlindDate() {
+            const btn = document.getElementById('btnBlindDate');
+            // Đổi giao diện nút thành Loading
+            btn.innerHTML = '<i class="fa-solid fa-spinner"></i> Scanning souls... (Cancel)';
+            btn.className = 'btn-new-blind btn-waiting';
+            btn.onclick = cancelBlindDate;
+
+            fetch('../api/blind_action.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'new_blind_date' })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if(data.status === 'matched') {
+                    // Nếu may mắn có người đang đợi sẵn -> Bốc luôn!
+                    window.location.href = 'messages.php?mode=blind&chat_with=' + data.target_id;
+                } else if(data.status === 'waiting') {
+                    // Nếu chưa có ai -> Bắt đầu vòng lặp hỏi Server liên tục mỗi 3 giây
+                    pollInterval = setInterval(checkIfMatched, 3000);
+                }
+            });
+        }
+
+        // Hỏi server xem mình đã được ghép chưa
+        function checkIfMatched() {
+            fetch('../api/blind_action.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'check_waiting' })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if(data.status === 'matched') {
+                    // Có người khác vừa bấm tìm và ghép trúng mình -> Reload trang để hiện thẻ chat!
+                    clearInterval(pollInterval);
+                    window.location.reload();
+                }
+            });
+        }
+
+        function cancelBlindDate() {
+            clearInterval(pollInterval);
+            fetch('../api/blind_action.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'cancel_waiting' })
+            })
+            .then(() => {
+                const btn = document.getElementById('btnBlindDate');
+                btn.innerHTML = '<i class="fa-solid fa-circle-plus"></i> New Blind Date';
+                btn.className = 'btn-new-blind';
+                btn.onclick = startNewBlindDate;
+            });
+        }
+
+        // XỬ LÝ LỘT MẶT NẠ
+        function showRevealModal() { document.getElementById('revealModal').classList.add('active'); }
+        function closeRevealModal() { document.getElementById('revealModal').classList.remove('active'); }
+        function confirmReveal() {
+            const partnerId = <?= $chat_partner ? $chat_partner['user_id'] : 0 ?>;
+            fetch('../api/blind_action.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'reveal', target_id: partnerId })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if(data.status === 'success') {
+                    window.location.href = 'messages.php?mode=standard&chat_with=' + partnerId;
+                }
+            });
+        }
+        <?php if($mode === 'blind' && $connection_percent >= 100): ?>
+            setTimeout(showRevealModal, 1000);
+        <?php endif; ?>
+    </script>
+</body>
+</html>

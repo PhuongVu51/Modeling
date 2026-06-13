@@ -9,12 +9,14 @@ $stmt->bind_param("i", $user_id);
 $stmt->execute();
 $current_user = $stmt->get_result()->fetch_assoc();
 
-// FETCH TOÀN BỘ NGƯỜI ĐÃ MATCH
+// FETCH TOÀN BỘ NGƯỜI ĐÃ MATCH (ẨN BLIND CHƯA REVEAL)
 $stmt_matches = $conn->prepare("
     SELECT p.*, m.created_at as match_date 
     FROM matches m 
     JOIN profiles p ON (p.user_id = m.user1_id OR p.user_id = m.user2_id) 
-    WHERE (m.user1_id = ? OR m.user2_id = ?) AND p.user_id != ?
+    WHERE (m.user1_id = ? OR m.user2_id = ?) 
+      AND p.user_id != ?
+      AND (m.is_blind = 0 OR m.is_revealed = 1)
     ORDER BY m.created_at DESC
 ");
 $stmt_matches->bind_param("iii", $user_id, $user_id, $user_id);
@@ -59,6 +61,7 @@ while($row = $matches_result->fetch_assoc()){
                     }
                     if (empty($m_photos)) $m_photos[] = 'default';
                 ?>
+                    <!-- Hiển thị thẻ của người đã Match -->
                     <div class="expanded-card" style="position: relative; box-shadow: 0 15px 35px rgba(0,0,0,0.1); height: 500px;">
                         <div class="expanded-photo">
                             <?php foreach($m_photos as $index => $photo): ?>
@@ -83,7 +86,7 @@ while($row = $matches_result->fetch_assoc()){
                             <p class="bio-text">"<?= htmlspecialchars($m['bio']) ?>"</p>
                             
                             <div class="info-vibe-box" style="margin-top:auto; padding:0; border:none; background:transparent;">
-                                <button class="btn-save-changes" style="width:100%; padding:15px; font-size:1.1rem; border-radius:15px;"><i class="fa-solid fa-comment-dots"></i> Send Message</button>
+                                <button class="btn-save-changes" style="width:100%; padding:15px; font-size:1.1rem; border-radius:15px;" onclick="window.location.href='messages.php?mode=standard&chat_with=<?= $m['user_id'] ?>'"><i class="fa-solid fa-comment-dots"></i> Send Message</button>
                             </div>
                         </div>
                     </div>

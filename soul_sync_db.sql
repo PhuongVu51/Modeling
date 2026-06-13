@@ -84,8 +84,25 @@ CREATE TABLE matches (
     FOREIGN KEY (user2_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS messages (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    sender_id INT NOT NULL,
+    receiver_id INT NOT NULL,
+    message_text TEXT NOT NULL,
+    is_read TINYINT(1) DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (receiver_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
 -- 8. Insert sẵn 15 sở thích chuẩn để hiển thị lên giao diện
 INSERT INTO interests (name) VALUES 
 ('Music'), ('Travel'), ('Coffee'), ('Reading'), ('Gym'), 
 ('Pets'), ('Movies'), ('Cooking'), ('Gaming'), ('Art'), 
 ('Photography'), ('Dancing'), ('Foodie'), ('Sports'), ('Karaoke');
+
+ALTER TABLE matches ADD COLUMN streak_count INT DEFAULT 0;
+ALTER TABLE matches ADD COLUMN last_interact_date DATE DEFAULT NULL;
+ALTER TABLE matches ADD COLUMN is_blind TINYINT(1) DEFAULT 0;
+ALTER TABLE matches ADD COLUMN is_revealed TINYINT(1) DEFAULT 0;
+ALTER TABLE profiles ADD COLUMN is_waiting_blind TINYINT(1) DEFAULT 0;

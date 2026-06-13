@@ -15,14 +15,20 @@ $stmt_my_int->bind_param("i", $user_id);
 $stmt_my_int->execute();
 $my_interests = array_column($stmt_my_int->get_result()->fetch_all(MYSQLI_ASSOC), 'interest_id');
 
-// Lấy danh sách gợi ý (BỎ QUA những người mình ĐÃ QUẸT TỪ TRƯỚC)
+// ==========================================
+// TÌM KIẾM NGƯỜI ĐỂ QUẸT (KHỚP GU 2 CHIỀU)
+// ==========================================
+$my_gender = $current_user['gender'];
+$my_interested_in = $current_user['interested_in'];
+
 $stmt_others = $conn->prepare("
     SELECT * FROM profiles 
-    WHERE user_id != ? AND interested_in = ? 
+    WHERE user_id != ? 
+    AND (? = 'Anyone' OR gender = ?) 
+    AND (interested_in = 'Anyone' OR interested_in = ?)
     AND user_id NOT IN (SELECT liked_user_id FROM likes WHERE user_id = ?)
 ");
-$my_gender = $current_user['gender'];
-$stmt_others->bind_param("isi", $user_id, $my_gender, $user_id);
+$stmt_others->bind_param("isssi", $user_id, $my_interested_in, $my_interested_in, $my_gender, $user_id);
 $stmt_others->execute();
 $others_result = $stmt_others->get_result();
 
@@ -34,11 +40,15 @@ while ($other = $others_result->fetch_assoc()) {
     $their_interests = array_column($stmt_ti->get_result()->fetch_all(MYSQLI_ASSOC), 'interest_id');
     
     $common = array_intersect($my_interests, $their_interests);
+    
     if (count($common) > 0) { 
         $score = 70 + (count($common) * 5); 
-        $other['match_rate'] = min(99, $score);
-        $suggested_list[] = $other;
+    } else {
+        $score = 45 + rand(1, 10); 
     }
+    
+    $other['match_rate'] = min(99, $score);
+    $suggested_list[] = $other;
 }
 usort($suggested_list, function($a, $b) { return $b['match_rate'] <=> $a['match_rate']; });
 
@@ -77,12 +87,14 @@ foreach ($suggested_list as $sug) {
     $cards_data[] = $sug;
 }
 
-// LẤY DANH SÁCH MATCH ĐỂ IN VÀO CỘT CONVERSATIONS
+// LẤY DANH SÁCH MATCH ĐỂ IN VÀO CỘT CONVERSATIONS (ĐÃ CHẶN BLIND DATE CHƯA REVEAL)
 $stmt_matches = $conn->prepare("
     SELECT p.*, m.created_at as match_date 
     FROM matches m 
     JOIN profiles p ON (p.user_id = m.user1_id OR p.user_id = m.user2_id) 
-    WHERE (m.user1_id = ? OR m.user2_id = ?) AND p.user_id != ?
+    WHERE (m.user1_id = ? OR m.user2_id = ?) 
+      AND p.user_id != ?
+      AND (m.is_blind = 0 OR m.is_revealed = 1)
     ORDER BY m.created_at DESC
 ");
 $stmt_matches->bind_param("iii", $user_id, $user_id, $user_id);
@@ -118,6 +130,7 @@ $your_vibe = count($vibes) > 0 ? implode(" & ", $vibes) : "Mysterious Vibe";
     <?php include 'header.php'; ?>
 
     <div class="dash-container">
+        <!-- CỘT TRÁI -->
         <aside class="left-sidebar">
             <div class="conversations-area">
                 <div class="section-header">
@@ -131,8 +144,9 @@ $your_vibe = count($vibes) > 0 ? implode(" & ", $vibes) : "Mysterious Vibe";
                             You haven't matched with anyone yet.
                         </div>
                     <?php else: ?>
+                        <!-- IN RA NHỮNG NGƯỜI ĐÃ MATCH -->
                         <?php foreach($messages as $msg): ?>
-                            <div class="chat-item">
+                            <div class="chat-item" onclick="window.location.href='messages.php?mode=standard&chat_with=<?= $msg['user_id'] ?>'">
                                 <img src="../uploads/<?= htmlspecialchars($msg['avatar']) ?>" class="chat-avatar" onerror="this.src='https://ui-avatars.com/api/?name=User&background=random'">
                                 <div class="chat-info">
                                     <div class="chat-top">
@@ -157,7 +171,8 @@ $your_vibe = count($vibes) > 0 ? implode(" & ", $vibes) : "Mysterious Vibe";
             </div>
         </aside>
 
-        <main class="main-feed">
+        <!-- MAIN FEED: STACK THẺ QUẸT CĂN GIỮA -->
+        <main class="main-feed" style="position: relative;">
             <div class="vibe-filter"><button class="btn-vibe"><i class="fa-solid fa-filter"></i> FILTER BY VIBE</button></div>
             
             <div class="cards-stack">
@@ -246,6 +261,7 @@ $your_vibe = count($vibes) > 0 ? implode(" & ", $vibes) : "Mysterious Vibe";
         </main>
     </div>
 
+    <!-- Div ẩn chứa Toast Match! -->
     <div id="toast" class="toast-notification"></div>
 
     <script>
