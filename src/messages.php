@@ -168,7 +168,8 @@ if ($chat_with_id > 0) {
 
                 <div class="chat-threads">
                     
-                    <?php if($current_double_date): ?>
+                    <!-- CHỈ HIỂN THỊ DOUBLE DATE NẾU KHÔNG PHẢI LÀ BLIND MODE -->
+                    <?php if($current_double_date && $mode !== 'blind'): ?>
                         <a href="messages.php?mode=double_date_waiting&id=<?= $current_double_date['id'] ?>" 
                            class="chat-thread <?= (isset($_GET['id']) && $_GET['id'] == $current_double_date['id']) ? 'active' : '' ?>">
                             <div style="display:flex; margin-right:10px;">
@@ -222,7 +223,8 @@ if ($chat_with_id > 0) {
             </div>
         </aside>
 
-        <?php if (isset($_GET['id']) && strpos($mode, 'double_date') !== false): ?>
+        <!-- LUỒNG DOUBLE DATE GROUP CHAT -->
+        <?php if (isset($_GET['id']) && strpos($mode, 'double_date') !== false && $mode !== 'blind'): ?>
             <main class="msg-main" style="position: relative;">
                 
                 <div class="chat-header">
@@ -242,6 +244,7 @@ if ($chat_with_id > 0) {
                     <div class="chat-header-actions"><i class="fa-solid fa-video"></i><i class="fa-solid fa-phone"></i><i class="fa-solid fa-circle-info"></i></div>
                 </div>
 
+                <!-- ================= DATE PLANNER PROPOSALS ================= -->
                 <div style="background: #fdfdfd; border-bottom: 1px solid #f0f0f0; padding: 15px 20px;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                         <span style="font-size: 0.85rem; font-weight: 700; color: #a0a0a0; letter-spacing: 1px; display: flex; align-items: center; gap: 8px;">
@@ -283,6 +286,8 @@ if ($chat_with_id > 0) {
 
                     </div>
                 </div>
+                <!-- ================= END DATE PLANNER ================= -->
+                
                 <div class="chat-history" style="flex: 1; background: #fff;">
                     <?php 
                     $last_msg_id = 0;
@@ -520,6 +525,7 @@ if ($chat_with_id > 0) {
                 </script>
             </main>
 
+        <!-- LUỒNG CHAT BÌNH THƯỜNG / BLIND -->
         <?php elseif ($chat_partner): ?>
             <?php if($mode === 'blind'): ?>
             <main class="blind-main">
@@ -614,6 +620,7 @@ if ($chat_with_id > 0) {
         <?php endif; ?>
     </div>
 
+    <!-- CÁC MODAL 1:1 -->
     <div id="revealModal" class="reveal-modal-overlay">
         <div class="reveal-modal">
             <div class="reveal-badge"><i class="fa-solid fa-bolt"></i> CONNECTION PEAK REACHED</div>
@@ -659,6 +666,88 @@ if ($chat_with_id > 0) {
                 }
             });
         }
+
+        // ==========================================
+        // LOGIC TÌM KIẾM BLIND DATE 
+        // ==========================================
+        let pollInterval;
+
+        function startNewBlindDate() {
+            const btn = document.getElementById('btnBlindDate');
+            // Đổi giao diện nút thành Loading
+            btn.innerHTML = '<i class="fa-solid fa-spinner"></i> Scanning souls... (Cancel)';
+            btn.className = 'btn-new-blind btn-waiting';
+            btn.onclick = cancelBlindDate;
+
+            fetch('../api/blind_action.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'new_blind_date' })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if(data.status === 'matched') {
+                    // Nếu may mắn có người đang đợi sẵn -> Bốc luôn!
+                    window.location.href = 'messages.php?mode=blind&chat_with=' + data.target_id;
+                } else if(data.status === 'waiting') {
+                    // Nếu chưa có ai -> Bắt đầu vòng lặp hỏi Server liên tục mỗi 3 giây
+                    pollInterval = setInterval(checkIfMatched, 3000);
+                }
+            });
+        }
+
+        // Hỏi server xem mình đã được ghép chưa
+        function checkIfMatched() {
+            fetch('../api/blind_action.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'check_waiting' })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if(data.status === 'matched') {
+                    // Có người khác vừa bấm tìm và ghép trúng mình -> Reload trang để hiện thẻ chat!
+                    clearInterval(pollInterval);
+                    window.location.reload();
+                }
+            });
+        }
+
+        function cancelBlindDate() {
+            clearInterval(pollInterval);
+            fetch('../api/blind_action.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'cancel_waiting' })
+            })
+            .then(() => {
+                const btn = document.getElementById('btnBlindDate');
+                btn.innerHTML = '<i class="fa-solid fa-circle-plus"></i> New Blind Date';
+                btn.className = 'btn-new-blind';
+                btn.onclick = startNewBlindDate;
+            });
+        }
+
+        // XỬ LÝ LỘT MẶT NẠ
+        function showRevealModal() { document.getElementById('revealModal').classList.add('active'); }
+        function closeRevealModal() { document.getElementById('revealModal').classList.remove('active'); }
+        function confirmReveal() {
+            const partnerId = <?= $chat_partner ? $chat_partner['user_id'] : 0 ?>;
+            fetch('../api/blind_action.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'reveal', target_id: partnerId })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if(data.status === 'success') {
+                    window.location.href = 'messages.php?mode=standard&chat_with=' + partnerId;
+                }
+            });
+        }
+        <?php if($mode === 'blind' && $connection_percent >= 100): ?>
+            setTimeout(showRevealModal, 1000);
+        <?php endif; ?>
     </script>
 </body>
 </html>
