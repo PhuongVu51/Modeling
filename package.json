@@ -1,0 +1,10 @@
+{
+  "name": "soulsync-modeling-code-connect",
+  "version": "1.0.0",
+  "description": "Figma Code Connect configuration and templates for SoulSync",
+  "private": true,
+  "devDependencies": {
+    "@figma/code-connect": "^1.0.0",
+    "typescript": "^5.0.0"
+  }
+}

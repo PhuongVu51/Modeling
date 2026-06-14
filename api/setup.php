@@ -3,7 +3,7 @@ header('Content-Type: application/json');
 
 $servername = "localhost";
 $username = "root";
-$password = ""; 
+$password = "";
 $dbname = "soul_sync_db";
 
 // 1. Conectar sem banco de dados para criar o banco

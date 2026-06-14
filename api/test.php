@@ -3,7 +3,7 @@ header('Content-Type: application/json');
 
 $servername = "localhost";
 $username = "root";
-$password = ""; 
+$password = "";
 $dbname = "soul_sync_db";
 
 // Teste 1: Conexão ao MySQL
@@ -23,14 +23,14 @@ $result['mysql_connection'] = 'OK';
 $db_check = $conn->query("SHOW DATABASES LIKE '$dbname'");
 if ($db_check && $db_check->num_rows > 0) {
     $result['database'] = 'EXISTE';
-    
+
     // Teste 3: Conectar ao banco
     $conn->select_db($dbname);
     if ($conn->connect_error) {
         $result['database_connection'] = 'FALHOU: ' . $conn->connect_error;
     } else {
         $result['database_connection'] = 'OK';
-        
+
         // Teste 4: Verificar tabelas
         $tables_check = $conn->query("SHOW TABLES");
         $tables = [];
