@@ -818,8 +818,36 @@ function closeModalOnOverlay(e) {
 }
 
 function sendSuggestion() {
-    closeSuggestModal();
-    showToast('💌 Date spot suggestion sent to your match!');
+    const selectedMatch = document.querySelector('input[name="suggest_match_id"]:checked');
+    if (!selectedMatch) {
+        showToast('⚠️ Please select a match first!');
+        return;
+    }
+    const receiverId = selectedMatch.value;
+    const venueName = document.getElementById('modal-venue-name').textContent;
+    const messageText = "I found a great date spot! Let's go to " + venueName + " 💌";
+
+    fetch('../api/send_message.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            receiver_id: receiverId,
+            message_text: messageText
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.status === 'success') {
+            closeSuggestModal();
+            showToast('💌 Date spot suggestion sent to your match!');
+        } else {
+            showToast('❌ Failed to send suggestion.');
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        showToast('❌ Error sending suggestion.');
+    });
 }
 
 function highlightCard(venueId) {
