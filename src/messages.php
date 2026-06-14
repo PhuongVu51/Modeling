@@ -11,25 +11,45 @@ $stmt->bind_param("i", $user_id); $stmt->execute();
 $current_user = $stmt->get_result()->fetch_assoc();
 $is_waiting_blind = $current_user['is_waiting_blind'];
 
-// TÌM PHÒNG DOUBLE DATE
+// 1. LẤY TẤT CẢ PHÒNG DOUBLE DATE MÀ USER THAM GIA
 $stmt_dd = $conn->prepare("
     SELECT d.id, d.status,
-           (SELECT COUNT(*) FROM double_date_members WHERE double_date_id = d.id AND status = 'pending') as pending_count
+           (SELECT COUNT(*) FROM double_date_members ddm JOIN profiles p ON ddm.user_id = p.user_id WHERE ddm.double_date_id = d.id AND ddm.status = 'pending') as pending_count
     FROM double_dates d
     JOIN double_date_members m ON d.id = m.double_date_id
     WHERE m.user_id = ?
-    ORDER BY d.created_at DESC LIMIT 1
+    ORDER BY d.created_at DESC
 ");
 $stmt_dd->bind_param("i", $user_id);
 $stmt_dd->execute();
-$current_double_date = $stmt_dd->get_result()->fetch_assoc();
+$dd_result = $stmt_dd->get_result();
 
-$is_group_active = ($current_double_date && $current_double_date['pending_count'] == 0);
+$double_dates = [];
+while($row = $dd_result->fetch_assoc()) {
+    $double_dates[] = $row;
+}
 
-// NẾU ĐANG Ở TRONG GROUP CHAT -> TẢI LỊCH SỬ TIN NHẮN NHÓM
+$is_group_active = false;
+$current_dd_id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+$current_group_number = 0;
+$total_groups = count($double_dates);
+
+// THUẬT TOÁN ĐÁNH SỐ NHÓM THEO THỨ TỰ TẠO (Thay vì dùng ID Database)
+foreach ($double_dates as $index => &$dd) {
+    // Vì danh sách đang sắp xếp mới nhất lên đầu (DESC), nên nhóm đầu tiên sẽ có số lớn nhất
+    $dd['display_number'] = $total_groups - $index;
+    
+    // Kiểm tra xem phòng ĐANG MỞ có active hay chưa
+    if (strpos($mode, 'double_date') !== false && $dd['id'] == $current_dd_id) {
+        $is_group_active = ($dd['pending_count'] == 0);
+        $current_group_number = $dd['display_number'];
+    }
+}
+unset($dd);
+
+// 2. LẤY LỊCH SỬ TIN NHẮN NHÓM (NẾU ĐANG Ở TRONG NHÓM)
 $group_chat_history = [];
-if (isset($_GET['id']) && strpos($mode, 'double_date') !== false) {
-    $dd_id = (int)$_GET['id'];
+if ($current_dd_id > 0 && strpos($mode, 'double_date') !== false) {
     $stmt_gmsg = $conn->prepare("
         SELECT gm.*, p.nickname, p.full_name, p.avatar 
         FROM group_messages gm 
@@ -37,7 +57,7 @@ if (isset($_GET['id']) && strpos($mode, 'double_date') !== false) {
         WHERE gm.double_date_id = ? 
         ORDER BY gm.created_at ASC
     ");
-    $stmt_gmsg->bind_param("i", $dd_id);
+    $stmt_gmsg->bind_param("i", $current_dd_id);
     $stmt_gmsg->execute();
     $res_gmsg = $stmt_gmsg->get_result();
     while($row = $res_gmsg->fetch_assoc()) {
@@ -47,14 +67,14 @@ if (isset($_GET['id']) && strpos($mode, 'double_date') !== false) {
 
 $chat_with_id = isset($_GET['chat_with']) ? intval($_GET['chat_with']) : 0;
 
-// NẾU ĐANG BẤM VÀO 1 NGƯỜI ĐỂ CHAT -> ĐÁNH DẤU TIN NHẮN LÀ ĐÃ ĐỌC TRƯỚC KHI LOAD
+// 3. ĐÁNH DẤU TIN NHẮN 1:1 LÀ ĐÃ ĐỌC TRƯỚC KHI LOAD
 if ($chat_with_id > 0) {
     $stmt_update_read = $conn->prepare("UPDATE messages SET is_read = 1 WHERE sender_id = ? AND receiver_id = ? AND is_read = 0");
     $stmt_update_read->bind_param("ii", $chat_with_id, $user_id);
     $stmt_update_read->execute();
 }
 
-// FETCH TOÀN BỘ MATCHES & SẮP XẾP THEO THỜI GIAN NHẮN MỚI NHẤT & LẤY SỐ TIN CHƯA ĐỌC
+// 4. FETCH TOÀN BỘ MATCHES & LẤY SỐ TIN CHƯA ĐỌC
 $stmt_matches = $conn->prepare("
     SELECT p.*, m.created_at as match_date, m.streak_count, m.last_interact_date, m.is_blind, m.is_revealed,
     (
@@ -133,7 +153,6 @@ if ($chat_with_id > 0) {
         .btn-waiting { background: #3d2f50 !important; color: #ffb3d1 !important; }
         .btn-waiting i { animation: spinPulse 1.5s linear infinite; }
         
-        /* CSS CHO TIN NHẮN CHƯA ĐỌC */
         .chat-thread.unread { background: rgba(255, 75, 130, 0.05); }
         .chat-thread.unread .thread-top strong { color: #5d1029; font-weight: 900; }
         .chat-thread.unread .thread-preview { color: #5d1029; font-weight: 800; }
@@ -191,21 +210,25 @@ if ($chat_with_id > 0) {
 
                 <div class="chat-threads">
                     
-                    <!-- CHỈ HIỂN THỊ DOUBLE DATE NẾU KHÔNG PHẢI LÀ BLIND MODE -->
-                    <?php if($current_double_date && $mode !== 'blind'): ?>
-                        <a href="messages.php?mode=double_date_waiting&id=<?= $current_double_date['id'] ?>" 
-                           class="chat-thread <?= (isset($_GET['id']) && $_GET['id'] == $current_double_date['id']) ? 'active' : '' ?>">
-                            <div style="display:flex; margin-right:10px;">
-                                <img src="https://ui-avatars.com/api/?name=G1" style="width:30px; height:30px; border-radius:50%; border:2px solid #fff; z-index:2;">
-                                <img src="https://ui-avatars.com/api/?name=G2" style="width:30px; height:30px; border-radius:50%; border:2px solid #fff; margin-left:-15px; z-index:1;">
-                            </div>
-                            <div class="thread-info">
-                                <div class="thread-top"><strong>Double date group</strong></div>
-                                <div class="thread-preview" style="color:<?= $is_group_active ? '#4CAF50' : '#ff4b82' ?>;">
-                                    <?= $is_group_active ? 'Group active now' : 'Waiting for members...' ?>
+                    <!-- HIỂN THỊ TẤT CẢ NHÓM DOUBLE DATE MÀ USER THAM GIA ĐƯỢC ĐÁNH SỐ LẠI -->
+                    <?php if($mode !== 'blind'): ?>
+                        <?php foreach($double_dates as $dd): 
+                            $dd_active = ($dd['pending_count'] == 0);
+                        ?>
+                            <a href="messages.php?mode=double_date_waiting&id=<?= $dd['id'] ?>" 
+                               class="chat-thread <?= ($current_dd_id == $dd['id'] && strpos($mode, 'double_date') !== false) ? 'active' : '' ?>">
+                                <div style="display:flex; margin-right:10px;">
+                                    <img src="https://ui-avatars.com/api/?name=G1" style="width:30px; height:30px; border-radius:50%; border:2px solid #fff; z-index:2;">
+                                    <img src="https://ui-avatars.com/api/?name=G2" style="width:30px; height:30px; border-radius:50%; border:2px solid #fff; margin-left:-15px; z-index:1;">
                                 </div>
-                            </div>
-                        </a>
+                                <div class="thread-info">
+                                    <div class="thread-top"><strong>Double date group #<?= $dd['display_number'] ?></strong></div>
+                                    <div class="thread-preview" style="color:<?= $dd_active ? '#4CAF50' : '#ff4b82' ?>;">
+                                        <?= $dd_active ? 'Group active now' : 'Waiting for members...' ?>
+                                    </div>
+                                </div>
+                            </a>
+                        <?php endforeach; ?>
                     <?php endif; ?>
 
                     <?php foreach($active_matches as $m): 
@@ -251,7 +274,7 @@ if ($chat_with_id > 0) {
         </aside>
 
         <!-- LUỒNG DOUBLE DATE GROUP CHAT -->
-        <?php if (isset($_GET['id']) && strpos($mode, 'double_date') !== false && $mode !== 'blind'): ?>
+        <?php if ($current_dd_id > 0 && strpos($mode, 'double_date') !== false && $mode !== 'blind'): ?>
             <main class="msg-main" style="position: relative;">
                 
                 <div class="chat-header">
@@ -261,7 +284,7 @@ if ($chat_with_id > 0) {
                             <img src="https://ui-avatars.com/api/?name=G2" style="width:40px; height:40px; border-radius:50%; border:2px solid #fff; margin-left:-20px; z-index:1;">
                         </div>
                         <div class="chat-header-text">
-                            <h2 style="display: flex; align-items: center; gap: 8px;">Double date group</h2>
+                            <h2 style="display: flex; align-items: center; gap: 8px;">Double date group #<?= $current_group_number ?></h2>
                             <p>
                                 <i class="fa-solid fa-circle" style="font-size:0.5rem; margin-right:5px; color:<?= $is_group_active ? '#4CAF50' : '#ff4b82' ?>;"></i> 
                                 <?= $is_group_active ? 'Group active now' : 'Waiting for members...' ?>
@@ -397,7 +420,7 @@ if ($chat_with_id > 0) {
                 </div>
 
                 <script>
-                    const ddId = <?= (int)$_GET['id'] ?>;
+                    const ddId = <?= $current_dd_id ?>;
                     const currentUserId = <?= $_SESSION['user_id'] ?>;
                     let lastMsgId = <?= $last_msg_id ?>;
                     const waitingOverlay = document.getElementById('dd-waiting-overlay');
@@ -447,7 +470,7 @@ if ($chat_with_id > 0) {
                         } catch(e) { console.error(e); }
                     }
 
-                    // TẢI TIN NHẮN MỚI TỪ SERVER VÀ CĂN GIỮA
+                    // TẢI TIN NHẮN MỚI TỪ SERVER
                     async function fetchNewGroupMessages() {
                         if (waitingOverlay.style.display !== 'none') return;
 
@@ -461,7 +484,6 @@ if ($chat_with_id > 0) {
                                     let messageText = msg.message_text;
                                     let html = '';
                                     
-                                    // Render SYSTEM BOX cho Vote
                                     if (messageText.startsWith('[VOTE] ')) {
                                         const loc = messageText.replace('[VOTE] ', '');
                                         
@@ -486,7 +508,6 @@ if ($chat_with_id > 0) {
                                             </div>
                                         `;
                                     } else {
-                                        // Render tin nhắn TEXT
                                         if (isMe) {
                                             html = `<div class="msg-row me"><div class="msg-bubble-wrap"><div class="msg-bubble">${messageText}</div><div class="msg-meta">${msg.time} <i class="fa-solid fa-check-double"></i></div></div></div>`;
                                         } else {
@@ -510,7 +531,7 @@ if ($chat_with_id > 0) {
                         } catch(e) { console.error(e); }
                     }
 
-                    // CẬP NHẬT TRẠNG THÁI WAITING (ĐÃ SỬA LOGIC PHÂN BIỆT CHỦ PHÒNG)
+                    // CẬP NHẬT TRẠNG THÁI WAITING
                     async function checkDoubleDateStatus() {
                         if (waitingOverlay.style.display === 'none') return;
 
@@ -530,7 +551,7 @@ if ($chat_with_id > 0) {
                                     if (headerText) headerText.innerHTML = '<i class="fa-solid fa-circle" style="font-size:0.5rem; margin-right:5px; color:#4CAF50;"></i> Group active now';
                                 } else {
                                     statusList.innerHTML = '';
-                                    const creatorId = data.creator_id; // Lấy ID chủ phòng từ API mới
+                                    const creatorId = data.creator_id; 
                                     
                                     data.members.forEach(m => {
                                         if (m.user_id === currentUserId) return; 
@@ -540,16 +561,14 @@ if ($chat_with_id > 0) {
                                         let text = '';
 
                                         if (currentUserId === creatorId) {
-                                            // 1. MÌNH LÀ CHỦ PHÒNG (Ví dụ: Hiệp nhìn giao diện)
                                             bg = m.status === 'accepted' ? '#ff759c' : '#f5f5f5';
                                             tc = m.status === 'accepted' ? 'white' : '#a0a0a0';
                                             text = m.status === 'accepted' ? `${m.name} accepted your invitation` : `Waiting for ${m.name} to accept the invitation`; 
                                         } else {
-                                            // 2. MÌNH LÀ NGƯỜI ĐƯỢC MỜI (Ví dụ: Phương Vũ / Gấu béo nhìn giao diện)
                                             if (m.user_id === creatorId) {
                                                 bg = '#ff759c';
                                                 tc = 'white';
-                                                text = `${m.name} created this group invitation`; // In ra chủ phòng
+                                                text = `${m.name} created this group invitation`; 
                                             } else {
                                                 bg = m.status === 'accepted' ? '#ff759c' : '#f5f5f5';
                                                 tc = m.status === 'accepted' ? 'white' : '#a0a0a0';
@@ -723,7 +742,6 @@ if ($chat_with_id > 0) {
 
         function startNewBlindDate() {
             const btn = document.getElementById('btnBlindDate');
-            // Đổi giao diện nút thành Loading
             btn.innerHTML = '<i class="fa-solid fa-spinner"></i> Scanning souls... (Cancel)';
             btn.className = 'btn-new-blind btn-waiting';
             btn.onclick = cancelBlindDate;
@@ -736,16 +754,13 @@ if ($chat_with_id > 0) {
             .then(res => res.json())
             .then(data => {
                 if(data.status === 'matched') {
-                    // Nếu may mắn có người đang đợi sẵn -> Bốc luôn!
                     window.location.href = 'messages.php?mode=blind&chat_with=' + data.target_id;
                 } else if(data.status === 'waiting') {
-                    // Nếu chưa có ai -> Bắt đầu vòng lặp hỏi Server liên tục mỗi 3 giây
                     pollInterval = setInterval(checkIfMatched, 3000);
                 }
             });
         }
 
-        // Hỏi server xem mình đã được ghép chưa
         function checkIfMatched() {
             fetch('../api/blind_action.php', {
                 method: 'POST',
@@ -755,7 +770,6 @@ if ($chat_with_id > 0) {
             .then(res => res.json())
             .then(data => {
                 if(data.status === 'matched') {
-                    // Có người khác vừa bấm tìm và ghép trúng mình -> Reload trang để hiện thẻ chat!
                     clearInterval(pollInterval);
                     window.location.reload();
                 }
