@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>SoulSync - Messages Mockup</title>
+    <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="../assets/style.css?v=123456789">
+    <style>
+        /* CSS FROM header.php */
+        .dash-nav { display: flex; justify-content: space-between; align-items: center; padding: 0 35px; height: 80px; background: #fff; border-bottom: 1px solid #f0f0f0; position: sticky; top: 0; z-index: 1000; }
+        .dash-nav-links { display: flex; gap: 35px; }
+        .dash-nav-links a { text-decoration: none; color: #888; font-weight: 700; font-size: 0.85rem; transition: 0.3s; text-transform: uppercase; }
+        .dash-nav-links a.active, .dash-nav-links a:hover { color: #e83e8c; }
+        .dash-nav-profile { display: flex; align-items: center; gap: 20px; }
+        .profile-info { display: flex; align-items: center; gap: 12px; }
+        .profile-text { text-align: right; display: flex; flex-direction: column; }
+        .profile-text .name { font-weight: 800; font-size: 0.9rem; color: #333; }
+        .profile-text .status { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 1px; }
+        .profile-avatar { width: 45px; height: 45px; border-radius: 50%; object-fit: cover; border: 2px solid #fff0f6; cursor: pointer; transition: 0.3s; }
+        .profile-avatar:hover { border-color: #e83e8c; }
+        .icon-btn { background: none; border: none; font-size: 1.3rem; color: #555; cursor: pointer; display: flex; align-items: center; }
+        .icon-btn:hover { color: #e83e8c; }
+
+        /* Additional styles for test_message to mimic messages.php exactly */
+        .msg-bubble-wrap {
+            max-width: 60%;
+        }
+    </style>
+</head>
+<body class="dashboard-body" style="overflow: hidden; background: #fbfbfb;">
+
+    <!-- header.php output -->
+    <nav class="dash-nav">
+        <div class="dash-logo">
+            <img src="../image/Pink and Neon Y2K Typography Beauty Store Logo (3).png" alt="SoulSync" style="height: 35px; object-fit: contain;">
+        </div>
+        
+        <div class="dash-nav-links">
+            <a href="#">HOME</a>
+            <a href="#">MATCHES</a>
+            <a href="#" class="active">MESSAGES</a>
+            <a href="#">EXPLORE</a>
+            <a href="#" style="color: #ff4b82; font-weight: 800;"><i class="fa-solid fa-heart-circle-check"></i> LIKES</a>
+        </div>
+
+        <div class="dash-nav-profile">
+            <button class="icon-btn" aria-label="Notifications"><i class="fa-solid fa-bell"></i></button>
+            <div class="profile-info">
+                <div class="profile-text">
+                    <span class="name">Me</span>
+                    <span class="status" style="color: #ff4b82; font-weight: bold;">PRO MEMBER</span>
+                </div>
+                <a href="#">
+                    <img src="https://ui-avatars.com/api/?name=Me&background=e83e8c&color=fff" alt="Avatar" class="profile-avatar">
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- messages.php standard mode output -->
+    <div class="messenger-wrapper ">
+        
+        <aside class="msg-sidebar ">
+            <div class="mode-toggle">
+                <button class="active">Standard Mode</button>
+                <button class="">Blind Mode</button>
+            </div>
+
+            <div class="matches-section">
+                <h3>Matches</h3>
+                <div class="matches-scroll">
+                    <a href="#" class="match-avatar-col">
+                        <div class="match-avatar-wrap">
+                            <img src="https://ui-avatars.com/api/?name=Alex&background=random" onerror="this.src='https://ui-avatars.com/api/?name=User'">
+                            <div class="online-dot"></div>
+                        </div>
+                        <span>Alex</span>
+                    </a>
+                </div>
+            </div>
+
+            <div class="msg-list-section">
+                <h3>Messages</h3>
+                <div class="msg-search ">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <input type="text" placeholder="Search messages">
+                </div>
+
+                <div class="chat-threads">
+                    <a href="#" class="chat-thread active">
+                        <img src="https://ui-avatars.com/api/?name=Alex&background=random" class="thread-avatar">
+                        
+                        <div class="thread-info">
+                            <div class="thread-top">
+                                <strong>
+                                    Alex 
+                                    <span style="color:#ff4b82; font-size:0.85rem; font-weight:800; margin-left:5px;"><i class="fa-solid fa-fire"></i> 4</span>
+                                </strong>
+                            </div>
+                            <div class="thread-preview">Tap to view conversation...</div>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </aside>
+
+        <main class="msg-main">
+            <div class="chat-header">
+                <div class="chat-header-info">
+                    <img src="https://ui-avatars.com/api/?name=Alex&background=random" onerror="this.src='https://ui-avatars.com/api/?name=User'">
+                    <div class="chat-header-text">
+                        <h2 style="display: flex; align-items: center; gap: 8px;">
+                            Alex, 24 
+                            <span style="color:#ff4b82; font-size:1rem; font-weight:800;"><i class="fa-solid fa-fire"></i> 4</span>
+                        </h2>
+                        <p><i class="fa-solid fa-circle" style="font-size:0.5rem; margin-right:5px; color:#2ecc71;"></i> Active now</p>
+                    </div>
+                </div>
+                <div class="chat-header-actions"><i class="fa-solid fa-video"></i><i class="fa-solid fa-phone"></i></div>
+            </div>
+            
+            <div class="chat-history" id="chatHistory">
+                <!-- Text message from them -->
+                <div class="msg-row them">
+                    <img src="https://ui-avatars.com/api/?name=Alex&background=random">
+                    <div class="msg-bubble-wrap">
+                        <div class="msg-bubble">
+                            I've been looking for a place to get drinks this weekend. Any ideas?
+                        </div>
+                        <div class="msg-meta">10:14 PM </div>
+                    </div>
+                </div>
+
+                <!-- Text message from me -->
+                <div class="msg-row me">
+                    <div class="msg-bubble-wrap">
+                        <div class="msg-bubble">
+                            I know the perfect spot!
+                        </div>
+                        <div class="msg-meta">10:15 PM <i class="fa-solid fa-check-double" style="color:#e83e8c;"></i></div>
+                    </div>
+                </div>
+
+                <!-- DATE SPOT TAG from me -->
+                <div class="msg-row me">
+                    <div class="msg-bubble-wrap">
+                        <div class="msg-bubble" style="padding:0; background:transparent; box-shadow:none; border:none;">
+                            <div style="background:#fff; border-radius:16px; overflow:hidden; border:1px solid #ffe6f0; width:220px; box-shadow:0 4px 15px rgba(0,0,0,0.05);">
+                                <img src="../image/lighthouseskybar.jpg" style="width:100%; height:120px; object-fit:cover;">
+                                <div style="padding:12px;">
+                                    <div style="font-family:'Public Sans', sans-serif; font-weight:800; font-size:15px; color:#1a1a2e; margin-bottom:4px;">Lighthouse Sky Bar</div>
+                                    <div style="color:#ff4d8d; font-size:13px; font-weight:700; margin-bottom:12px;">❤️ 96 Likes</div>
+                                    <a href="https://maps.google.com/?q=Lighthouse+Sky+Bar+Hanoi" target="_blank" style="display:block; text-align:center; background:linear-gradient(135deg, #ff4d8d, #ff7eb3); color:#fff; padding:8px; border-radius:8px; font-size:13px; font-weight:bold; text-decoration:none;">View on Map</a>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="msg-meta">10:16 PM <i class="fa-solid fa-check-double" style="color:#e83e8c;"></i></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="chat-input-wrapper">
+                <div class="ai-prompts">
+                    <span><i class="fa-solid fa-wand-magic-sparkles"></i> Ask about hobbies</span>
+                </div>
+                <div class="chat-input-box">
+                    <input type="text" id="msgInput" placeholder="Whisper your soul's truth...">
+                    <button class="btn-send"><i class="fa-solid fa-paper-plane"></i></button>
+                </div>
+            </div>
+        </main>
+    </div>
+
+</body>
+</html>

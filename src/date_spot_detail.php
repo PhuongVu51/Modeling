@@ -832,7 +832,17 @@ function sendSuggestion() {
     }
     const receiverId = selectedMatch.value;
     const venueName = "<?= addslashes(htmlspecialchars($vd['name'] ?? $spot['name'] ?? 'this spot')) ?>";
-    const messageText = "I found a great date spot! Let's go to " + venueName + " 💌";
+    const venueImage = "<?= addslashes(htmlspecialchars($vd['image'] ?? '../image/lighthouseskybar.jpg')) ?>";
+    const venueLikes = "<?= addslashes(htmlspecialchars($spot['sync_rate'] ?? '90')) ?>";
+    const venueMap = "<?= addslashes(htmlspecialchars($vd['map_url'] ?? 'https://maps.google.com/')) ?>";
+    
+    const dsData = {
+        name: venueName,
+        image: venueImage,
+        likes: venueLikes,
+        map_url: venueMap
+    };
+    const messageText = "DATE_SPOT_TAG:" + JSON.stringify(dsData);
 
     fetch('../api/send_message.php', {
         method: 'POST',
@@ -848,12 +858,12 @@ function sendSuggestion() {
             closeSuggestModal();
             showToast('💌 Date spot suggestion sent to your match!');
         } else {
-            showToast('❌ Failed to send suggestion.');
+            showToast('❌ ' + (data.message || 'Failed to send suggestion.'));
         }
     })
     .catch(err => {
         console.error(err);
-        showToast('❌ Error sending suggestion.');
+        showToast('❌ Error sending suggestion: ' + err.message);
     });
 }
 

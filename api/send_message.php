@@ -52,9 +52,9 @@ if ($receiver_id > 0 && !empty($message_text)) {
         
         echo json_encode(['status' => 'success']);
     } else {
-        echo json_encode(['status' => 'error', 'message' => 'DB Insert Failed']);
+        echo json_encode(['status' => 'error', 'message' => 'DB Insert Failed: ' . $stmt->error]);
     }
 } else {
-    echo json_encode(['status' => 'error', 'message' => 'Invalid data']);
+    echo json_encode(['status' => 'error', 'message' => 'Invalid data: receiver_id=' . $receiver_id . ' message_text=' . (empty($message_text) ? 'empty' : 'present')]);
 }
 ?>
