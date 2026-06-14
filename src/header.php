@@ -17,6 +17,7 @@ if (!empty($current_user['avatar'])) {
         <a href="matches.php" class="<?= basename($_SERVER['PHP_SELF']) == 'matches.php' ? 'active' : '' ?>">MATCHES</a>
         <a href="messages.php" class="<?= basename($_SERVER['PHP_SELF']) == 'messages.php' ? 'active' : '' ?>">MESSAGES</a>
         <a href="explore.php" class="<?= basename($_SERVER['PHP_SELF']) == 'explore.php' ? 'active' : '' ?>">EXPLORE</a>
+        <a href="date_spots.php" class="<?= basename($_SERVER['PHP_SELF']) == 'date_spots.php' ? 'active' : '' ?>" style="color: <?= basename($_SERVER['PHP_SELF']) == 'date_spots.php' ? '#e83e8c' : '' ?>;">📍 DATE SPOTS</a>
         
         <?php if (isset($is_pro) && $is_pro): ?>
             <a href="likes.php" style="color: #ff4b82; font-weight: 800;">

@@ -111,3 +111,45 @@ ALTER TABLE matches ADD COLUMN last_interact_date DATE DEFAULT NULL;
 ALTER TABLE matches ADD COLUMN is_blind TINYINT(1) DEFAULT 0;
 ALTER TABLE matches ADD COLUMN is_revealed TINYINT(1) DEFAULT 0;
 ALTER TABLE profiles ADD COLUMN is_waiting_blind TINYINT(1) DEFAULT 0;
+
+-- 9. Posts table for the Explore social feed
+DROP TABLE IF EXISTS post_likes;
+DROP TABLE IF EXISTS posts;
+
+CREATE TABLE posts (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    caption TEXT,
+    photo VARCHAR(255),
+    mood_tag VARCHAR(50) DEFAULT NULL,
+    shared_interest VARCHAR(100) DEFAULT NULL,
+    likes_count INT DEFAULT 0,
+    comments_count INT DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE post_likes (
+    user_id INT NOT NULL,
+    post_id INT NOT NULL,
+    PRIMARY KEY (user_id, post_id),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE
+);
+
+-- 10. Date spots suggestions
+DROP TABLE IF EXISTS date_spots;
+
+CREATE TABLE date_spots (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    photo VARCHAR(255),
+    sync_rate INT DEFAULT 96
+);
+
+INSERT INTO date_spots (name, description, photo, sync_rate) VALUES
+('West Lake (Trich Sai / Ve Ho area)', 'Enjoy a sunset walk, then grab a salted coffee from nearby street vendors.', NULL, 96),
+('Hoan Kiem Walking Street', 'Perfect for weekend dates, where couples can watch street performances together.', NULL, 94),
+('Sky Walk Observation Deck (Lotte Lieu Giai)', 'Experience a panoramic view of Hanoi from the 65th floor, with many great photo spots.', NULL, 92),
+('Complex 01 (Tay Son)', 'A creative art space with workshops like pottery and painting—ideal for breaking the ice on a first date.', NULL, 89);
