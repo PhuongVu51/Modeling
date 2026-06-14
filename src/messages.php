@@ -98,6 +98,166 @@ if ($chat_with_id > 0) {
         @keyframes spinPulse { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .btn-waiting { background: #3d2f50 !important; color: #ffb3d1 !important; }
         .btn-waiting i { animation: spinPulse 1.5s linear infinite; }
+
+        /* ── ICEBREAKER BUTTON ── */
+        .btn-icebreaker {
+            width: 42px; height: 42px;
+            border-radius: 50%;
+            border: none;
+            background: linear-gradient(135deg, #ff4d8d, #a855f7);
+            color: #fff;
+            font-size: 1.1rem;
+            cursor: pointer;
+            flex-shrink: 0;
+            transition: transform 0.2s, box-shadow 0.2s;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 4px 15px rgba(168,85,247,0.35);
+        }
+        .btn-icebreaker:hover { transform: scale(1.1); box-shadow: 0 6px 20px rgba(168,85,247,0.5); }
+        .btn-icebreaker.loading i { animation: spinPulse 1s linear infinite; }
+
+        /* ── ICEBREAKER MODAL ── */
+        .icebreaker-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.55);
+            z-index: 10000;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(6px);
+        }
+        .icebreaker-overlay.open { display: flex; }
+        .icebreaker-modal {
+            background: #fff;
+            border-radius: 28px;
+            padding: 36px;
+            max-width: 440px;
+            width: 92%;
+            box-shadow: 0 30px 60px rgba(0,0,0,0.25);
+            animation: icebreakerIn 0.35s cubic-bezier(0.175,0.885,0.32,1.275);
+            text-align: center;
+        }
+        @keyframes icebreakerIn {
+            from { opacity:0; transform: scale(0.85) translateY(30px); }
+            to   { opacity:1; transform: scale(1) translateY(0); }
+        }
+        .icebreaker-modal .modal-icon {
+            font-size: 3rem;
+            margin-bottom: 12px;
+            background: linear-gradient(135deg, #ff4d8d, #a855f7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .icebreaker-modal h3 {
+            font-family: 'Public Sans', sans-serif;
+            font-size: 20px;
+            font-weight: 800;
+            color: #1a1a2e;
+            margin: 0 0 6px;
+        }
+        .icebreaker-modal .modal-sub {
+            font-family: 'Public Sans', sans-serif;
+            font-size: 13px;
+            color: #888;
+            margin: 0 0 24px;
+        }
+
+        .icebreaker-suggestions {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 20px;
+            min-height: 120px;
+            justify-content: center;
+        }
+        .icebreaker-suggestion {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 16px;
+            background: #f8f5ff;
+            border: 2px solid #ede8f5;
+            border-radius: 16px;
+            cursor: pointer;
+            text-align: left;
+            font-family: 'Public Sans', sans-serif;
+            font-size: 14px;
+            color: #333;
+            transition: all 0.2s;
+        }
+        .icebreaker-suggestion:hover {
+            border-color: #a855f7;
+            background: #f3eeff;
+            transform: translateX(4px);
+        }
+        .icebreaker-suggestion .suggestion-icon {
+            width: 32px; height: 32px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #ff4d8d, #a855f7);
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0;
+            color: #fff;
+            font-size: 14px;
+        }
+
+        .icebreaker-loading {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            padding: 30px 0;
+        }
+        .icebreaker-loading .spinner {
+            width: 40px; height: 40px;
+            border: 4px solid #ede8f5;
+            border-top-color: #a855f7;
+            border-radius: 50%;
+            animation: spinPulse 0.8s linear infinite;
+        }
+        .icebreaker-loading span {
+            font-family: 'Public Sans', sans-serif;
+            font-size: 13px;
+            color: #888;
+        }
+
+        .icebreaker-actions {
+            display: flex;
+            gap: 10px;
+        }
+        .btn-icebreaker-refresh {
+            flex: 1;
+            padding: 12px;
+            background: linear-gradient(135deg, #a855f7, #ff4d8d);
+            color: #fff;
+            border: none;
+            border-radius: 14px;
+            font-family: 'Public Sans', sans-serif;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+        .btn-icebreaker-refresh:hover { opacity: 0.9; }
+        .btn-icebreaker-close {
+            flex: 1;
+            padding: 12px;
+            background: #f5f5f5;
+            color: #555;
+            border: none;
+            border-radius: 14px;
+            font-family: 'Public Sans', sans-serif;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .icebreaker-error {
+            color: #e74c3c;
+            font-size: 13px;
+            font-family: 'Public Sans', sans-serif;
+            padding: 20px 0;
+        }
     </style>
 </head>
 <body class="dashboard-body" style="overflow: hidden; background: <?= $mode === 'blind' ? '#1f182b' : '#fbfbfb' ?>;">
@@ -272,11 +432,15 @@ if ($chat_with_id > 0) {
                 </div>
                 <div class="chat-input-wrapper">
                     <div class="chat-input-box">
+                        <button class="btn-icebreaker" id="btnIcebreaker" onclick="openIcebreakerModal()" title="Need an icebreaker?">
+                            <i class="fa-solid fa-robot"></i>
+                        </button>
                         <input type="text" id="msgInput" placeholder="Type a message..." onkeypress="handleKeyPress(event)">
                         <button class="btn-send" onclick="sendMessage()"><i class="fa-solid fa-paper-plane"></i></button>
                     </div>
                 </div>
             </main>
+
             <?php endif; ?>
 
         <?php else: ?>
@@ -417,6 +581,86 @@ if ($chat_with_id > 0) {
         <?php if($mode === 'blind' && $connection_percent >= 100): ?>
             setTimeout(showRevealModal, 1000);
         <?php endif; ?>
+
+        // ==========================================
+        // ICEBREAKER AI (DIFY.AI INTEGRATION)
+        // ==========================================
+        function openIcebreakerModal() {
+            document.getElementById('icebreakerOverlay').classList.add('open');
+            fetchIcebreakers();
+        }
+
+        function closeIcebreakerModal() {
+            document.getElementById('icebreakerOverlay').classList.remove('open');
+        }
+
+        function fetchIcebreakers() {
+            const container = document.getElementById('icebreakerSuggestions');
+            container.innerHTML = '<div class="icebreaker-loading"><div class="spinner"></div><span>AI is thinking of something clever...</span></div>';
+
+            const partnerId = <?= $chat_partner ? $chat_partner['user_id'] : 0 ?>;
+            const partnerName = "<?= $chat_partner ? addslashes(htmlspecialchars($chat_partner['display_name'] ?? '')) : 'your match' ?>";
+
+            fetch('../api/dify_icebreaker.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    partner_id: partnerId,
+                    partner_name: partnerName
+                })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.status === 'success' && data.suggestions) {
+                    renderSuggestions(data.suggestions);
+                } else {
+                    container.innerHTML = '<div class="icebreaker-error"><i class="fa-solid fa-exclamation-circle"></i> ' + (data.message || 'Could not fetch suggestions') + '</div>';
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                container.innerHTML = '<div class="icebreaker-error"><i class="fa-solid fa-exclamation-circle"></i> Connection error. Please try again.</div>';
+            });
+        }
+
+        function renderSuggestions(suggestions) {
+            const container = document.getElementById('icebreakerSuggestions');
+            const icons = ['fa-wand-magic-sparkles', 'fa-heart', 'fa-bolt'];
+            container.innerHTML = suggestions.map((s, i) =>
+                `<div class="icebreaker-suggestion" onclick="useSuggestion(this)">
+                    <div class="suggestion-icon"><i class="fa-solid ${icons[i % 3]}"></i></div>
+                    <span>${s}</span>
+                </div>`
+            ).join('');
+        }
+
+        function useSuggestion(el) {
+            const text = el.querySelector('span').textContent;
+            document.getElementById('msgInput').value = text;
+            document.getElementById('msgInput').focus();
+            closeIcebreakerModal();
+        }
     </script>
+
+    <!-- ── ICEBREAKER MODAL ── -->
+    <div class="icebreaker-overlay" id="icebreakerOverlay" onclick="if(event.target===this) closeIcebreakerModal()">
+        <div class="icebreaker-modal">
+            <div class="modal-icon"><i class="fa-solid fa-robot"></i></div>
+            <h3>AI Icebreaker ✨</h3>
+            <p class="modal-sub">Powered by Dify.ai — pick a suggestion to send!</p>
+
+            <div class="icebreaker-suggestions" id="icebreakerSuggestions">
+                <!-- Filled by JS -->
+            </div>
+
+            <div class="icebreaker-actions">
+                <button class="btn-icebreaker-refresh" onclick="fetchIcebreakers()">
+                    <i class="fa-solid fa-arrows-rotate"></i> New Suggestions
+                </button>
+                <button class="btn-icebreaker-close" onclick="closeIcebreakerModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
 </body>
 </html>

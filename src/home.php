@@ -255,7 +255,7 @@ $your_vibe = count($vibes) > 0 ? implode(" & ", $vibes) : "Mysterious Vibe";
 
                 <div class="ai-icebreaker-container">
                     <div class="icebreaker-tooltip">Need an icebreaker?</div>
-                    <button class="btn-ai-bot"><i class="fa-solid fa-robot"></i></button>
+                    <button class="btn-ai-bot" onclick="openHomeIcebreakerModal()"><i class="fa-solid fa-robot"></i></button>
                 </div>
             </div>
         </main>
@@ -336,7 +336,6 @@ $your_vibe = count($vibes) > 0 ? implode(" & ", $vibes) : "Mysterious Vibe";
             setTimeout(() => { toast.classList.remove('show'); }, 2500);
         }
 
-        // BẮT SỰ KIỆN BÀN PHÍM
         document.addEventListener('keydown', function(event) {
             if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) return;
             if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
@@ -357,6 +356,188 @@ $your_vibe = count($vibes) > 0 ? implode(" & ", $vibes) : "Mysterious Vibe";
             const direction = event.key === 'ArrowLeft' ? -1 : 1;
             changePhotoAction(topCard, direction);
         });
+
+        // ==========================================
+        // ICEBREAKER AI (DIFY.AI INTEGRATION)
+        // ==========================================
+        function openHomeIcebreakerModal() {
+            document.getElementById('homeIcebreakerOverlay').classList.add('open');
+            fetchHomeIcebreakers();
+        }
+
+        function closeHomeIcebreakerModal() {
+            document.getElementById('homeIcebreakerOverlay').classList.remove('open');
+        }
+
+        function fetchHomeIcebreakers() {
+            const container = document.getElementById('homeIcebreakerSuggestions');
+            container.innerHTML = '<div class="icebreaker-loading"><div class="spinner"></div><span>AI is crafting the perfect opener...</span></div>';
+
+            // Get the currently visible card's name if possible
+            const visibleCards = Array.from(document.querySelectorAll('.swipeable-card')).filter(c => c.style.display !== 'none');
+            let targetName = 'someone new';
+            let targetId = 0;
+
+            if (visibleCards.length > 0) {
+                const topCard = visibleCards[visibleCards.length - 1];
+                const nameEl = topCard.querySelector('.info-name');
+                if (nameEl) targetName = nameEl.textContent.split(',')[0].trim();
+                targetId = parseInt(topCard.id.replace('card-', '')) || 0;
+            }
+
+            fetch('../api/dify_icebreaker.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    partner_id: targetId,
+                    partner_name: targetName
+                })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.status === 'success' && data.suggestions) {
+                    renderHomeSuggestions(data.suggestions);
+                } else {
+                    container.innerHTML = '<div class="icebreaker-error"><i class="fa-solid fa-exclamation-circle"></i> ' + (data.message || 'Could not fetch suggestions') + '</div>';
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                container.innerHTML = '<div class="icebreaker-error"><i class="fa-solid fa-exclamation-circle"></i> Connection error. Try again.</div>';
+            });
+        }
+
+        function renderHomeSuggestions(suggestions) {
+            const container = document.getElementById('homeIcebreakerSuggestions');
+            const icons = ['fa-wand-magic-sparkles', 'fa-heart', 'fa-bolt'];
+            container.innerHTML = suggestions.map((s, i) =>
+                `<div class="icebreaker-suggestion" onclick="copyHomeSuggestion(this)">
+                    <div class="suggestion-icon"><i class="fa-solid ${icons[i % 3]}"></i></div>
+                    <span>${s}</span>
+                </div>`
+            ).join('');
+        }
+
+        function copyHomeSuggestion(el) {
+            const text = el.querySelector('span').textContent;
+            navigator.clipboard.writeText(text).then(() => {
+                const toast = document.getElementById('toast');
+                toast.innerHTML = '<i class="fa-solid fa-copy" style="color:#a855f7;"></i> Copied to clipboard! Use it in chat';
+                toast.style.background = 'rgba(0,0,0,0.9)';
+                toast.classList.add('show');
+                setTimeout(() => toast.classList.remove('show'), 2500);
+                closeHomeIcebreakerModal();
+            });
+        }
     </script>
+
+    <!-- ── ICEBREAKER MODAL (HOME) ── -->
+    <style>
+        .icebreaker-overlay {
+            display: none; position: fixed; inset: 0;
+            background: rgba(0,0,0,0.55); z-index: 10000;
+            justify-content: center; align-items: center;
+            backdrop-filter: blur(6px);
+        }
+        .icebreaker-overlay.open { display: flex; }
+        .icebreaker-modal {
+            background: #fff; border-radius: 28px; padding: 36px;
+            max-width: 440px; width: 92%;
+            box-shadow: 0 30px 60px rgba(0,0,0,0.25);
+            animation: icebreakerIn 0.35s cubic-bezier(0.175,0.885,0.32,1.275);
+            text-align: center;
+        }
+        @keyframes icebreakerIn {
+            from { opacity:0; transform: scale(0.85) translateY(30px); }
+            to   { opacity:1; transform: scale(1) translateY(0); }
+        }
+        .icebreaker-modal .modal-icon {
+            font-size: 3rem; margin-bottom: 12px;
+            background: linear-gradient(135deg, #ff4d8d, #a855f7);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        .icebreaker-modal h3 {
+            font-family: 'Public Sans', sans-serif; font-size: 20px;
+            font-weight: 800; color: #1a1a2e; margin: 0 0 6px;
+        }
+        .icebreaker-modal .modal-sub {
+            font-family: 'Public Sans', sans-serif; font-size: 13px;
+            color: #888; margin: 0 0 24px;
+        }
+        .icebreaker-suggestions {
+            display: flex; flex-direction: column; gap: 10px;
+            margin-bottom: 20px; min-height: 120px; justify-content: center;
+        }
+        .icebreaker-suggestion {
+            display: flex; align-items: center; gap: 12px;
+            padding: 14px 16px; background: #f8f5ff;
+            border: 2px solid #ede8f5; border-radius: 16px;
+            cursor: pointer; text-align: left;
+            font-family: 'Public Sans', sans-serif; font-size: 14px; color: #333;
+            transition: all 0.2s;
+        }
+        .icebreaker-suggestion:hover {
+            border-color: #a855f7; background: #f3eeff;
+            transform: translateX(4px);
+        }
+        .icebreaker-suggestion .suggestion-icon {
+            width: 32px; height: 32px; border-radius: 50%;
+            background: linear-gradient(135deg, #ff4d8d, #a855f7);
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0; color: #fff; font-size: 14px;
+        }
+        .icebreaker-loading {
+            display: flex; flex-direction: column; align-items: center;
+            gap: 12px; padding: 30px 0;
+        }
+        .icebreaker-loading .spinner {
+            width: 40px; height: 40px;
+            border: 4px solid #ede8f5; border-top-color: #a855f7;
+            border-radius: 50%; animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .icebreaker-loading span {
+            font-family: 'Public Sans', sans-serif; font-size: 13px; color: #888;
+        }
+        .icebreaker-actions { display: flex; gap: 10px; }
+        .btn-icebreaker-refresh {
+            flex: 1; padding: 12px;
+            background: linear-gradient(135deg, #a855f7, #ff4d8d);
+            color: #fff; border: none; border-radius: 14px;
+            font-family: 'Public Sans', sans-serif; font-size: 14px;
+            font-weight: 700; cursor: pointer; transition: opacity 0.2s;
+        }
+        .btn-icebreaker-refresh:hover { opacity: 0.9; }
+        .btn-icebreaker-close {
+            flex: 1; padding: 12px; background: #f5f5f5; color: #555;
+            border: none; border-radius: 14px;
+            font-family: 'Public Sans', sans-serif; font-size: 14px;
+            font-weight: 600; cursor: pointer;
+        }
+        .icebreaker-error {
+            color: #e74c3c; font-size: 13px;
+            font-family: 'Public Sans', sans-serif; padding: 20px 0;
+        }
+    </style>
+
+    <div class="icebreaker-overlay" id="homeIcebreakerOverlay" onclick="if(event.target===this) closeHomeIcebreakerModal()">
+        <div class="icebreaker-modal">
+            <div class="modal-icon"><i class="fa-solid fa-robot"></i></div>
+            <h3>AI Icebreaker ✨</h3>
+            <p class="modal-sub">Powered by Dify.ai — tap a suggestion to copy it!</p>
+
+            <div class="icebreaker-suggestions" id="homeIcebreakerSuggestions">
+                <!-- Filled by JS -->
+            </div>
+
+            <div class="icebreaker-actions">
+                <button class="btn-icebreaker-refresh" onclick="fetchHomeIcebreakers()">
+                    <i class="fa-solid fa-arrows-rotate"></i> New Suggestions
+                </button>
+                <button class="btn-icebreaker-close" onclick="closeHomeIcebreakerModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
 </body>
 </html>
