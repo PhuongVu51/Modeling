@@ -45,15 +45,33 @@ if (isset($_GET['id']) && strpos($mode, 'double_date') !== false) {
     }
 }
 
-// FETCH TOÀN BỘ MATCHES
+$chat_with_id = isset($_GET['chat_with']) ? intval($_GET['chat_with']) : 0;
+
+// NẾU ĐANG BẤM VÀO 1 NGƯỜI ĐỂ CHAT -> ĐÁNH DẤU TIN NHẮN LÀ ĐÃ ĐỌC TRƯỚC KHI LOAD
+if ($chat_with_id > 0) {
+    $stmt_update_read = $conn->prepare("UPDATE messages SET is_read = 1 WHERE sender_id = ? AND receiver_id = ? AND is_read = 0");
+    $stmt_update_read->bind_param("ii", $chat_with_id, $user_id);
+    $stmt_update_read->execute();
+}
+
+// FETCH TOÀN BỘ MATCHES & SẮP XẾP THEO THỜI GIAN NHẮN MỚI NHẤT & LẤY SỐ TIN CHƯA ĐỌC
 $stmt_matches = $conn->prepare("
-    SELECT p.*, m.created_at as match_date, m.streak_count, m.last_interact_date, m.is_blind, m.is_revealed 
+    SELECT p.*, m.created_at as match_date, m.streak_count, m.last_interact_date, m.is_blind, m.is_revealed,
+    (
+        SELECT MAX(created_at) FROM messages 
+        WHERE (sender_id = m.user1_id AND receiver_id = m.user2_id) 
+           OR (sender_id = m.user2_id AND receiver_id = m.user1_id)
+    ) as last_msg_time,
+    (
+        SELECT COUNT(*) FROM messages 
+        WHERE receiver_id = ? AND sender_id = p.user_id AND is_read = 0
+    ) as unread_count
     FROM matches m 
     JOIN profiles p ON (p.user_id = m.user1_id OR p.user_id = m.user2_id) 
     WHERE (m.user1_id = ? OR m.user2_id = ?) AND p.user_id != ?
-    ORDER BY m.created_at DESC
+    ORDER BY COALESCE(last_msg_time, m.created_at) DESC
 ");
-$stmt_matches->bind_param("iii", $user_id, $user_id, $user_id);
+$stmt_matches->bind_param("iiii", $user_id, $user_id, $user_id, $user_id);
 $stmt_matches->execute();
 $matches_result = $stmt_matches->get_result();
 
@@ -80,7 +98,6 @@ while($row = $matches_result->fetch_assoc()){
 }
 
 $active_matches = ($mode === 'blind') ? $blind_matches : $standard_matches;
-$chat_with_id = isset($_GET['chat_with']) ? intval($_GET['chat_with']) : 0;
 $chat_partner = null;
 $chat_history = [];
 $connection_percent = 0;
@@ -115,6 +132,12 @@ if ($chat_with_id > 0) {
         @keyframes spinPulse { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .btn-waiting { background: #3d2f50 !important; color: #ffb3d1 !important; }
         .btn-waiting i { animation: spinPulse 1.5s linear infinite; }
+        
+        /* CSS CHO TIN NHẮN CHƯA ĐỌC */
+        .chat-thread.unread { background: rgba(255, 75, 130, 0.05); }
+        .chat-thread.unread .thread-top strong { color: #5d1029; font-weight: 900; }
+        .chat-thread.unread .thread-preview { color: #5d1029; font-weight: 800; }
+        .unread-badge { display: inline-block; width: 10px; height: 10px; background: #ff4b82; border-radius: 50%; margin-left: 5px; box-shadow: 0 0 5px rgba(255,75,130,0.5); }
     </style>
 </head>
 <body class="dashboard-body" style="overflow: hidden; background: <?= $mode === 'blind' ? '#1f182b' : '#fbfbfb' ?>;">
@@ -142,7 +165,7 @@ if ($chat_with_id > 0) {
                                         <img src="../uploads/<?= htmlspecialchars($m['avatar'] ?: 'default.jpg') ?>" onerror="this.src='https://ui-avatars.com/api/?name=User'">
                                         <div class="online-dot"></div>
                                     </div>
-                                    <span><?= htmlspecialchars(explode(' ', $m['display_name'])[0]) ?></span>
+                                    <span style="<?= $m['unread_count'] > 0 ? 'font-weight:900; color:#5d1029;' : '' ?>"><?= htmlspecialchars(explode(' ', $m['display_name'])[0]) ?></span>
                                 </a>
                             <?php endforeach; ?>
                         <?php endif; ?>
@@ -185,9 +208,12 @@ if ($chat_with_id > 0) {
                         </a>
                     <?php endif; ?>
 
-                    <?php foreach($active_matches as $m): ?>
+                    <?php foreach($active_matches as $m): 
+                        $is_unread = ($m['unread_count'] > 0);
+                        $unread_class = $is_unread ? 'unread' : '';
+                    ?>
                         <a href="messages.php?mode=<?= $mode ?>&chat_with=<?= $m['user_id'] ?>" 
-                           class="chat-thread <?= ($chat_with_id == $m['user_id'] && strpos($mode, 'double_date') === false) ? 'active' : '' ?>">
+                           class="chat-thread <?= $unread_class ?> <?= ($chat_with_id == $m['user_id'] && strpos($mode, 'double_date') === false) ? 'active' : '' ?>">
                             <?php if($mode === 'blind'): ?>
                                 <div class="thread-avatar blind-avatar-placeholder" style="background:var(--y2k-hot-pink); border:none;"></div>
                             <?php else: ?>
@@ -200,9 +226,10 @@ if ($chat_with_id > 0) {
                                         <?php if($m['display_streak'] >= 3): ?>
                                             <span style="color:#ff4b82; font-size:0.85rem; font-weight:800; margin-left:5px;"><i class="fa-solid fa-fire"></i> <?= $m['display_streak'] ?></span>
                                         <?php endif; ?>
+                                        <?php if($is_unread): ?><span class="unread-badge"></span><?php endif; ?>
                                     </strong>
                                 </div>
-                                <div class="thread-preview">Tap to view conversation...</div>
+                                <div class="thread-preview"><?= $is_unread ? 'Tap to view new message...' : 'Tap to view conversation...' ?></div>
                             </div>
                         </a>
                     <?php endforeach; ?>
@@ -483,7 +510,7 @@ if ($chat_with_id > 0) {
                         } catch(e) { console.error(e); }
                     }
 
-                    // CẬP NHẬT TRẠNG THÁI WAITING
+                    // CẬP NHẬT TRẠNG THÁI WAITING (ĐÃ SỬA LOGIC PHÂN BIỆT CHỦ PHÒNG)
                     async function checkDoubleDateStatus() {
                         if (waitingOverlay.style.display === 'none') return;
 
@@ -503,11 +530,33 @@ if ($chat_with_id > 0) {
                                     if (headerText) headerText.innerHTML = '<i class="fa-solid fa-circle" style="font-size:0.5rem; margin-right:5px; color:#4CAF50;"></i> Group active now';
                                 } else {
                                     statusList.innerHTML = '';
+                                    const creatorId = data.creator_id; // Lấy ID chủ phòng từ API mới
+                                    
                                     data.members.forEach(m => {
                                         if (m.user_id === currentUserId) return; 
-                                        let bg = m.status === 'accepted' ? '#ff759c' : '#f5f5f5';
-                                        let tc = m.status === 'accepted' ? 'white' : '#a0a0a0';
-                                        let text = m.status === 'accepted' ? `${m.name} accepted your invitation` : `Waiting for ${m.name} to accept the invitation`; 
+                                        
+                                        let bg = '#f5f5f5';
+                                        let tc = '#a0a0a0';
+                                        let text = '';
+
+                                        if (currentUserId === creatorId) {
+                                            // 1. MÌNH LÀ CHỦ PHÒNG (Ví dụ: Hiệp nhìn giao diện)
+                                            bg = m.status === 'accepted' ? '#ff759c' : '#f5f5f5';
+                                            tc = m.status === 'accepted' ? 'white' : '#a0a0a0';
+                                            text = m.status === 'accepted' ? `${m.name} accepted your invitation` : `Waiting for ${m.name} to accept the invitation`; 
+                                        } else {
+                                            // 2. MÌNH LÀ NGƯỜI ĐƯỢC MỜI (Ví dụ: Phương Vũ / Gấu béo nhìn giao diện)
+                                            if (m.user_id === creatorId) {
+                                                bg = '#ff759c';
+                                                tc = 'white';
+                                                text = `${m.name} created this group invitation`; // In ra chủ phòng
+                                            } else {
+                                                bg = m.status === 'accepted' ? '#ff759c' : '#f5f5f5';
+                                                tc = m.status === 'accepted' ? 'white' : '#a0a0a0';
+                                                text = m.status === 'accepted' ? `${m.name} joined the group` : `Waiting for ${m.name} to join`; 
+                                            }
+                                        }
+
                                         statusList.innerHTML += `<div style="background: ${bg}; padding: 18px; border-radius: 25px; font-weight: 700; color: ${tc}; font-size: 1.1rem; text-align: center; transition: all 0.3s ease;">${text}</div>`;
                                     });
                                 }
