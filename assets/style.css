@@ -374,7 +374,7 @@ body.landing-body { font-family: 'Public Sans', sans-serif; }
 .msg-row { display: flex; align-items: flex-end; gap: 10px; max-width: 70%; }
 .msg-row.them { align-self: flex-start; }
 .msg-row.me { align-self: flex-end; flex-direction: row-reverse; }
-.msg-row img { width: 35px; height: 35px; border-radius: 50%; object-fit: cover; }
+.msg-row > img { width: 35px; height: 35px; border-radius: 50%; object-fit: cover; }
 .msg-bubble-wrap { display: flex; flex-direction: column; }
 .msg-bubble { padding: 12px 18px; font-size: 0.95rem; line-height: 1.5; position: relative; }
 .msg-row.them .msg-bubble { background: #fff; border: 1px solid #eee; color: #333; border-radius: 20px 20px 20px 5px; box-shadow: 0 2px 10px rgba(0,0,0,0.02); }

@@ -84,6 +84,64 @@ if ($chat_with_id > 0) {
         }
     }
 }
+
+// Lookup for old date spot message strings to render as tags
+$spot_lookup = [
+    'Lighthouse Sky Bar' => [
+        'name' => 'Lighthouse Sky Bar',
+        'image' => '../image/lighthouseskybar.jpg',
+        'likes' => '96',
+        'map_url' => 'https://maps.google.com/?q=Lighthouse+Sky+Bar+Hanoi'
+    ],
+    'Sky Walk Lotte' => [
+        'name' => 'Sky Walk Lotte',
+        'image' => '../image/lotteobservationdeck.jpg',
+        'likes' => '92',
+        'map_url' => 'https://maps.google.com/?q=Sky+Walk+Lotte+Hanoi'
+    ],
+    'Sky Walk Observation Deck (Lotte Lieu Giai)' => [
+        'name' => 'Sky Walk Lotte',
+        'image' => '../image/lotteobservationdeck.jpg',
+        'likes' => '92',
+        'map_url' => 'https://maps.google.com/?q=Sky+Walk+Lotte+Hanoi'
+    ],
+    'The Alchemist' => [
+        'name' => 'The Alchemist',
+        'image' => '../image/thealchemist.jpg',
+        'likes' => '93',
+        'map_url' => 'https://maps.google.com/?q=The+Alchemist+Bar+Hanoi'
+    ],
+    'Complex 01' => [
+        'name' => 'Complex 01',
+        'image' => '../image/complex01.jpg',
+        'likes' => '89',
+        'map_url' => 'https://maps.google.com/?q=Complex+01+Hanoi'
+    ],
+    'Complex 01 (Tay Son)' => [
+        'name' => 'Complex 01',
+        'image' => '../image/complex01.jpg',
+        'likes' => '89',
+        'map_url' => 'https://maps.google.com/?q=Complex+01+Hanoi'
+    ],
+    'West Lake' => [
+        'name' => 'West Lake',
+        'image' => '../image/date_spot_1.png',
+        'likes' => '96',
+        'map_url' => 'https://maps.google.com/?q=West+Lake+Hanoi'
+    ],
+    'West Lake (Trich Sai / Ve Ho area)' => [
+        'name' => 'West Lake',
+        'image' => '../image/date_spot_1.png',
+        'likes' => '96',
+        'map_url' => 'https://maps.google.com/?q=West+Lake+Hanoi'
+    ],
+    'Hoan Kiem Walking Street' => [
+        'name' => 'Hoan Kiem Walking Street',
+        'image' => '../image/date_spot_2.png',
+        'likes' => '94',
+        'map_url' => 'https://maps.google.com/?q=Hoan+Kiem+Walking+Street+Hanoi'
+    ]
+];
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -372,7 +430,27 @@ if ($chat_with_id > 0) {
                         <?php foreach($chat_history as $msg): $is_me = ($msg['sender_id'] == $user_id); 
                             $raw_msg = $msg['message_text'];
                             $is_ds_tag = (strpos($raw_msg, 'DATE_SPOT_TAG:') === 0);
-                            $ds_data = $is_ds_tag ? json_decode(substr($raw_msg, 14), true) : null;
+                            $ds_data = null;
+                            if ($is_ds_tag) {
+                                $ds_data = json_decode(substr($raw_msg, 14), true);
+                            } else {
+                                $old_prefix = "I found a great date spot! Let's go to ";
+                                if (strpos($raw_msg, $old_prefix) === 0) {
+                                    $extracted = trim(str_replace($old_prefix, "", $raw_msg));
+                                    $extracted = trim(str_replace("💌", "", $extracted));
+                                    $found_spot = null;
+                                    foreach ($spot_lookup as $key => $val) {
+                                        if (stripos($extracted, $key) !== false || stripos($key, $extracted) !== false) {
+                                            $found_spot = $val;
+                                            break;
+                                        }
+                                    }
+                                    if ($found_spot) {
+                                        $is_ds_tag = true;
+                                        $ds_data = $found_spot;
+                                    }
+                                }
+                            }
                         ?>
                             <div class="msg-row <?= $is_me ? 'me' : 'them' ?>">
                                 <?php if(!$is_me): ?><div class="blind-avatar-placeholder" style="width:35px; height:35px; font-size:0.8rem;"></div><?php endif; ?>
@@ -440,7 +518,27 @@ if ($chat_with_id > 0) {
                     <?php foreach($chat_history as $msg): $is_me = ($msg['sender_id'] == $user_id); 
                         $raw_msg = $msg['message_text'];
                         $is_ds_tag = (strpos($raw_msg, 'DATE_SPOT_TAG:') === 0);
-                        $ds_data = $is_ds_tag ? json_decode(substr($raw_msg, 14), true) : null;
+                        $ds_data = null;
+                        if ($is_ds_tag) {
+                            $ds_data = json_decode(substr($raw_msg, 14), true);
+                        } else {
+                            $old_prefix = "I found a great date spot! Let's go to ";
+                            if (strpos($raw_msg, $old_prefix) === 0) {
+                                $extracted = trim(str_replace($old_prefix, "", $raw_msg));
+                                $extracted = trim(str_replace("💌", "", $extracted));
+                                $found_spot = null;
+                                foreach ($spot_lookup as $key => $val) {
+                                    if (stripos($extracted, $key) !== false || stripos($key, $extracted) !== false) {
+                                        $found_spot = $val;
+                                        break;
+                                    }
+                                }
+                                if ($found_spot) {
+                                    $is_ds_tag = true;
+                                    $ds_data = $found_spot;
+                                }
+                            }
+                        }
                     ?>
                         <div class="msg-row <?= $is_me ? 'me' : 'them' ?>">
                             <?php if(!$is_me): ?><img src="../uploads/<?= htmlspecialchars($chat_partner['avatar'] ?: 'default.jpg') ?>" onerror="this.src='https://ui-avatars.com/api/?name=U'"><?php endif; ?>

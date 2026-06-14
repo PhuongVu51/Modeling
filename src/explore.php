@@ -45,6 +45,8 @@ $venues = [
         'location' => 'Hoan Kiem',
         'image' => '../image/lighthouseskybar.jpg',
         'tab' => ['first_date', 'romantic'],
+        'sync_rate' => 96,
+        'map_url' => 'https://maps.google.com/?q=Lighthouse+Sky+Bar+Hanoi',
     ],
     [
         'id' => 2,
@@ -57,6 +59,8 @@ $venues = [
         'location' => 'Lieu Giai',
         'image' => '../image/lotteobservationdeck.jpg',
         'tab' => ['first_date', 'deep_talk'],
+        'sync_rate' => 92,
+        'map_url' => 'https://maps.google.com/?q=Sky+Walk+Lotte+Hanoi',
     ],
     [
         'id' => 3,
@@ -69,6 +73,8 @@ $venues = [
         'location' => 'West Lake',
         'image' => '../image/thealchemist.jpg',
         'tab' => ['romantic', 'deep_talk'],
+        'sync_rate' => 93,
+        'map_url' => 'https://maps.google.com/?q=The+Alchemist+Bar+Hanoi',
     ],
     [
         'id' => 4,
@@ -81,6 +87,8 @@ $venues = [
         'location' => 'Tay Son',
         'image' => '../image/complex01.jpg',
         'tab' => ['first_date', 'romantic', 'deep_talk'],
+        'sync_rate' => 89,
+        'map_url' => 'https://maps.google.com/?q=Complex+01+Hanoi',
     ],
 ];
 
@@ -637,7 +645,7 @@ if ($active_tab === 'saved') {
                             <span>View Details</span>
                         </button>
                     </div>
-                    <button class="btn-suggest" onclick="openSuggestModal(<?= $venue['id'] ?>, '<?= htmlspecialchars(addslashes($venue['name'])) ?>')">
+                    <button class="btn-suggest" onclick="openSuggestModal(<?= $venue['id'] ?>, '<?= htmlspecialchars(addslashes($venue['name'])) ?>', '<?= htmlspecialchars(addslashes($venue['image'])) ?>', '<?= htmlspecialchars(addslashes($venue['sync_rate'] ?? '90')) ?>', '<?= htmlspecialchars(addslashes($venue['map_url'] ?? 'https://maps.google.com/')) ?>')">
                         Suggest to Match
                     </button>
                 </div>
@@ -798,12 +806,20 @@ function toggleSave(venueId, btn) {
     localStorage.setItem('saved_venues', JSON.stringify([...savedVenues]));
 }
 
+let currentVenueData = null;
+
 function viewDetails(venueId) {
     window.location.href = 'date_spot_detail.php?id=' + venueId;
 }
 
-function openSuggestModal(venueId, venueName) {
+function openSuggestModal(venueId, venueName, venueImage, venueLikes, venueMap) {
     currentVenueId = venueId;
+    currentVenueData = {
+        name: venueName,
+        image: venueImage,
+        likes: venueLikes,
+        map_url: venueMap
+    };
     document.getElementById('modal-venue-name').textContent = venueName;
     document.getElementById('suggest-modal').classList.add('open');
 }
@@ -811,6 +827,7 @@ function openSuggestModal(venueId, venueName) {
 function closeSuggestModal() {
     document.getElementById('suggest-modal').classList.remove('open');
     currentVenueId = null;
+    currentVenueData = null;
 }
 
 function closeModalOnOverlay(e) {
@@ -824,8 +841,8 @@ function sendSuggestion() {
         return;
     }
     const receiverId = selectedMatch.value;
-    const venueName = document.getElementById('modal-venue-name').textContent;
-    const messageText = "I found a great date spot! Let's go to " + venueName + " 💌";
+    if (!currentVenueData) return;
+    const messageText = "DATE_SPOT_TAG:" + JSON.stringify(currentVenueData);
 
     fetch('../api/send_message.php', {
         method: 'POST',
