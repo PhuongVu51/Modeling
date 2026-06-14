@@ -7,7 +7,7 @@ $user_id = $_SESSION['user_id'];
 $spot_id = (int)($_GET['id'] ?? 0);
 
 if ($spot_id <= 0) {
-    header("Location: date_spots.php");
+    header("Location: explore.php");
     exit();
 }
 
@@ -18,7 +18,7 @@ $stmt->execute();
 $spot = $stmt->get_result()->fetch_assoc();
 
 if (!$spot) {
-    header("Location: date_spots.php");
+    header("Location: explore.php");
     exit();
 }
 
@@ -29,9 +29,24 @@ $stmt2->execute();
 $current_user = $stmt2->get_result()->fetch_assoc();
 $is_pro = isset($current_user['is_pro']) ? $current_user['is_pro'] : false;
 
+// Get all matches for the suggest modal
+$stmt_matches = $conn->prepare("
+    SELECT p.user_id, p.full_name, p.nickname, p.avatar
+    FROM matches m 
+    JOIN profiles p ON (p.user_id = m.user1_id OR p.user_id = m.user2_id) 
+    WHERE (m.user1_id = ? OR m.user2_id = ?) AND p.user_id != ?
+    AND (m.is_blind = 0 OR m.is_revealed = 1)
+    ORDER BY m.created_at DESC
+");
+$stmt_matches->bind_param("iii", $user_id, $user_id, $user_id);
+$stmt_matches->execute();
+$all_matches = $stmt_matches->get_result()->fetch_all(MYSQLI_ASSOC);
+
 // Map IDs to venue images & rich data (supplement DB data with curated content)
 $venue_data = [
     1 => [
+        'name'     => 'Lighthouse Sky Bar',
+        'description' => 'A premier rooftop bar offering a stunning panoramic view of Hanoi\'s Old Quarter and Chuong Duong Bridge. Enjoy the sunset with premium cocktails.',
         'image'    => '../image/venue_1.png',
         'type'     => 'ROOFTOP BAR',
         'price'    => '250k – 500k',
@@ -51,6 +66,8 @@ $venue_data = [
         'vibe'     => 'Romantic',
     ],
     2 => [
+        'name'     => 'Sky Walk Lotte',
+        'description' => 'Located on the 65th floor of the Lotte Center, this observation deck features glass-floor panels and breathtaking 360-degree views of the city. A perfect spot for golden hour photography and exciting moments.',
         'image'    => '../image/venue_2.png',
         'type'     => 'CITY VIEW EXPERIENCE',
         'price'    => '150k – 300k',
@@ -70,6 +87,8 @@ $venue_data = [
         'vibe'     => 'Adventurous',
     ],
     3 => [
+        'name'     => 'The Alchemist',
+        'description' => 'A hidden speakeasy tucked behind a lush garden entrance. It features low-lighting, intimate booths, and craft cocktails made with locally-sourced Vietnamese herbs—ideal for deep, honest conversations.',
         'image'    => '../image/venue_3.png',
         'type'     => 'COCKTAIL BAR & SPEAKEASY',
         'price'    => '150k – 300k',
@@ -89,6 +108,8 @@ $venue_data = [
         'vibe'     => 'Intimate',
     ],
     4 => [
+        'name'     => 'Complex 01',
+        'description' => 'A vibrant creative space hosting monthly themed art workshops like pottery and painting. It offers an open courtyard with interactive installations, making it the perfect icebreaker for a first date.',
         'image'    => '../image/venue_4.png',
         'type'     => 'CREATIVE SPACE',
         'price'    => '150k – 300k',
@@ -129,8 +150,8 @@ $vd = $venue_data[$spot_id] ?? [
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= htmlspecialchars($spot['name']) ?> – SoulSync Date Spots</title>
-    <meta name="description" content="<?= htmlspecialchars($spot['description'] ?? '') ?>">
+    <title><?= htmlspecialchars($vd['name'] ?? $spot['name']) ?> – SoulSync Date Spots</title>
+    <meta name="description" content="<?= htmlspecialchars($vd['description'] ?? $spot['description'] ?? '') ?>">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Be+Vietnam+Pro:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="../assets/style.css?v=<?= time() ?>">
@@ -484,6 +505,42 @@ $vd = $venue_data[$spot_id] ?? [
             cursor: pointer;
         }
 
+        /* Suggest Modal Match List */
+        .match-select-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 24px;
+            max-height: 180px;
+            overflow-y: auto;
+            padding-right: 8px;
+        }
+        .match-select-list::-webkit-scrollbar { width: 4px; }
+        .match-select-list::-webkit-scrollbar-thumb { background: #eee; border-radius: 4px; }
+        .match-option {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 14px;
+            border: 2px solid #f0f0f0;
+            border-radius: 16px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .match-option:hover { border-color: #ff4d8d; background: #fff0f6; }
+        .match-option input[type="radio"] {
+            accent-color: #ff4d8d;
+            transform: scale(1.2);
+            margin: 0 4px;
+        }
+        .match-option img {
+            width: 40px; height: 40px; border-radius: 50%; object-fit: cover;
+        }
+        .match-option span {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 15px; font-weight: 700; color: #333;
+        }
+
         /* ── TOAST ── */
         #ds-toast {
             display: none;
@@ -550,7 +607,7 @@ $vd = $venue_data[$spot_id] ?? [
 <!-- ── HERO ── -->
 <div class="ds-hero">
     <img src="<?= htmlspecialchars($vd['image']) ?>"
-         alt="<?= htmlspecialchars($spot['name']) ?>"
+         alt="<?= htmlspecialchars($vd['name'] ?? $spot['name']) ?>"
          class="ds-hero-img"
          onerror="this.src='../image/venue_1.png'">
     <div class="ds-hero-gradient"></div>
@@ -563,7 +620,7 @@ $vd = $venue_data[$spot_id] ?? [
     <!-- Hero bottom info overlay -->
     <div class="ds-hero-info">
         <div>
-            <h1 class="ds-hero-name"><?= htmlspecialchars($spot['name']) ?></h1>
+            <h1 class="ds-hero-name"><?= htmlspecialchars($vd['name'] ?? $spot['name']) ?></h1>
             <p class="ds-hero-type"><?= htmlspecialchars($vd['type']) ?></p>
         </div>
         <div class="ds-hero-sync-badge">
@@ -637,12 +694,14 @@ $vd = $venue_data[$spot_id] ?? [
     </div>
     <?php endif; ?>
 
-    <!-- Description from DB -->
-    <?php if (!empty($spot['description'])): ?>
+    <!-- Description -->
+    <?php 
+    $desc_to_show = $vd['description'] ?? $spot['description'] ?? '';
+    if (!empty($desc_to_show)): ?>
     <div style="margin-bottom:32px; background:#fff; border-radius:24px; padding:28px 32px; box-shadow:0 4px 20px rgba(0,0,0,0.05);">
         <h2 class="ds-section-heading">📍 About this Spot</h2>
         <p style="font-family:'Be Vietnam Pro',sans-serif; font-size:15px; color:#555; line-height:1.7; margin:0;">
-            <?= nl2br(htmlspecialchars($spot['description'])) ?>
+            <?= nl2br(htmlspecialchars($desc_to_show)) ?>
         </p>
     </div>
     <?php endif; ?>
@@ -692,10 +751,27 @@ $vd = $venue_data[$spot_id] ?? [
     <div class="suggest-modal">
         <div class="modal-emoji">💌</div>
         <h3 class="modal-title">Suggest This Spot?</h3>
-        <p class="modal-desc">
-            Send <strong><?= htmlspecialchars($spot['name']) ?></strong> to your match as a date idea.
-            They'll receive a sweet notification to plan a date here with you!
+        <p class="modal-desc" style="margin-bottom: 16px;">
+            Send <strong><?= htmlspecialchars($vd['name'] ?? $spot['name']) ?></strong> to your match as a date idea.
+            Who would you like to invite?
         </p>
+
+        <div class="match-select-list">
+            <?php foreach ($all_matches as $match): 
+                $m_avatar = !empty($match['avatar']) ? '../uploads/' . htmlspecialchars($match['avatar']) : 'https://ui-avatars.com/api/?name=' . urlencode($match['nickname'] ?? $match['full_name']) . '&background=random&color=fff';
+                $m_name = htmlspecialchars($match['nickname'] ?? $match['full_name']);
+            ?>
+            <label class="match-option">
+                <input type="radio" name="suggest_match_id" value="<?= $match['user_id'] ?>">
+                <img src="<?= $m_avatar ?>" alt="<?= $m_name ?>">
+                <span><?= $m_name ?></span>
+            </label>
+            <?php endforeach; ?>
+            <?php if(empty($all_matches)): ?>
+            <p style="text-align:center; color:#888; font-size:14px; margin: 10px 0;">You don't have any matches yet.</p>
+            <?php endif; ?>
+        </div>
+
         <div class="modal-actions">
             <button class="btn-modal-send" onclick="sendSuggestion()">
                 <i class="fa-solid fa-paper-plane"></i> Send Suggestion

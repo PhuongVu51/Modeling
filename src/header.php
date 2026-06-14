@@ -1,11 +1,25 @@
 <?php
-$display_name = htmlspecialchars($current_user['nickname'] ?? $current_user['full_name'] ?? 'User');
+// Ensure $current_user is reliably populated from the database using a LEFT JOIN
+if (!isset($current_user) || empty($current_user['email'])) {
+    if (isset($_SESSION['user_id']) && isset($conn)) {
+        $u_id = $_SESSION['user_id'];
+        $stmt_header = $conn->prepare("SELECT u.email, u.is_pro, p.nickname, p.full_name, p.avatar FROM users u LEFT JOIN profiles p ON u.id = p.user_id WHERE u.id = ?");
+        $stmt_header->bind_param("i", $u_id);
+        $stmt_header->execute();
+        $current_user = $stmt_header->get_result()->fetch_assoc() ?: [];
+    } else {
+        $current_user = [];
+    }
+}
+
+$display_name = htmlspecialchars($current_user['nickname'] ?? $current_user['full_name'] ?? current(explode('@', $current_user['email'] ?? 'User')));
 
 if (!empty($current_user['avatar'])) {
     $display_avatar = '../uploads/' . htmlspecialchars($current_user['avatar']);
 } else {
     $display_avatar = 'https://ui-avatars.com/api/?name=' . urlencode($display_name) . '&background=e83e8c&color=fff';
 }
+$is_pro = isset($current_user['is_pro']) ? $current_user['is_pro'] : false;
 ?>
 <nav class="dash-nav">
     <div class="dash-logo">
@@ -17,7 +31,6 @@ if (!empty($current_user['avatar'])) {
         <a href="matches.php" class="<?= basename($_SERVER['PHP_SELF']) == 'matches.php' ? 'active' : '' ?>">MATCHES</a>
         <a href="messages.php" class="<?= basename($_SERVER['PHP_SELF']) == 'messages.php' ? 'active' : '' ?>">MESSAGES</a>
         <a href="explore.php" class="<?= basename($_SERVER['PHP_SELF']) == 'explore.php' ? 'active' : '' ?>">EXPLORE</a>
-        <a href="date_spots.php" class="<?= basename($_SERVER['PHP_SELF']) == 'date_spots.php' ? 'active' : '' ?>" style="color: <?= basename($_SERVER['PHP_SELF']) == 'date_spots.php' ? '#e83e8c' : '' ?>;">📍 DATE SPOTS</a>
         
         <?php if (isset($is_pro) && $is_pro): ?>
             <a href="likes.php" style="color: #ff4b82; font-weight: 800;">

@@ -4,147 +4,94 @@ if (!isset($_SESSION['user_id'])) { header("Location: login.html"); exit(); }
 require_once '../api/db_connect.php';
 
 $user_id = $_SESSION['user_id'];
-
-// Get current user info
 $stmt = $conn->prepare("SELECT * FROM profiles p JOIN users u ON p.user_id = u.id WHERE p.user_id = ?");
 $stmt->bind_param("i", $user_id);
 $stmt->execute();
 $current_user = $stmt->get_result()->fetch_assoc();
 $is_pro = isset($current_user['is_pro']) ? $current_user['is_pro'] : false;
 
-// Get user's current interests for shared interest matching
-$stmt_my_int = $conn->prepare("SELECT i.name FROM user_interests ui JOIN interests i ON ui.interest_id = i.id WHERE ui.user_id = ? LIMIT 3");
-$stmt_my_int->bind_param("i", $user_id);
-$stmt_my_int->execute();
-$my_interests_res = $stmt_my_int->get_result();
-$my_interest_names = [];
-while ($r = $my_interests_res->fetch_assoc()) { $my_interest_names[] = $r['name']; }
+// Get user interests for recommendation
+$stmt_int = $conn->prepare("SELECT i.name FROM user_interests ui JOIN interests i ON ui.interest_id = i.id WHERE ui.user_id = ? LIMIT 5");
+$stmt_int->bind_param("i", $user_id);
+$stmt_int->execute();
+$user_interests = $stmt_int->get_result()->fetch_all(MYSQLI_ASSOC);
 
-// Get all matches (people the current user has matched with) for stories row
+// Get 2 recent matches for the recommendation section
 $stmt_matches = $conn->prepare("
     SELECT p.user_id, p.full_name, p.nickname, p.avatar
     FROM matches m 
     JOIN profiles p ON (p.user_id = m.user1_id OR p.user_id = m.user2_id) 
-    WHERE (m.user1_id = ? OR m.user2_id = ?) 
-      AND p.user_id != ?
-      AND (m.is_blind = 0 OR m.is_revealed = 1)
+    WHERE (m.user1_id = ? OR m.user2_id = ?) AND p.user_id != ?
+    AND (m.is_blind = 0 OR m.is_revealed = 1)
     ORDER BY m.created_at DESC
-    LIMIT 8
 ");
 $stmt_matches->bind_param("iii", $user_id, $user_id, $user_id);
 $stmt_matches->execute();
-$story_matches = $stmt_matches->get_result()->fetch_all(MYSQLI_ASSOC);
+$rec_matches = $stmt_matches->get_result()->fetch_all(MYSQLI_ASSOC);
 
-// If no matches, get some other users for stories
-if (empty($story_matches)) {
-    $stmt_stories = $conn->prepare("
-        SELECT p.user_id, p.full_name, p.nickname, p.avatar 
-        FROM profiles p 
-        WHERE p.user_id != ? 
-        LIMIT 6
-    ");
-    $stmt_stories->bind_param("i", $user_id);
-    $stmt_stories->execute();
-    $story_matches = $stmt_stories->get_result()->fetch_all(MYSQLI_ASSOC);
+// Active filter tab
+$active_tab = $_GET['tab'] ?? 'first_date';
+
+// All venue data
+$venues = [
+    [
+        'id' => 1,
+        'name' => 'Lighthouse Sky Bar',
+        'type' => 'ROOFTOP BAR',
+        'price' => '250k – 500k',
+        'price_color' => '#8d7076',
+        'quote' => '"View Old Quarter & Chuong Duong Bridge"',
+        'tags' => ['💗 Perfect for romantic nights', '☕ Great for deep conversations', '🎲 Easy first date spot'],
+        'location' => 'Hoan Kiem',
+        'image' => '../image/venue_1.png',
+        'tab' => ['first_date', 'romantic'],
+    ],
+    [
+        'id' => 2,
+        'name' => 'Sky Walk Lotte',
+        'type' => 'CITY VIEW EXPERIENCE',
+        'price' => '150k – 300k',
+        'price_color' => '#ff4d8d',
+        'quote' => '"See Hanoi from above and share the moment"',
+        'tags' => ['🏙️ 65th floor view', '📸 Instagram-worthy', '💫 Exciting first date'],
+        'location' => 'Lieu Giai',
+        'image' => '../image/venue_2.png',
+        'tab' => ['first_date', 'deep_talk'],
+    ],
+    [
+        'id' => 3,
+        'name' => 'The Alchemist',
+        'type' => 'COCKTAIL BAR & SPEAKEASY',
+        'price' => '150k – 300k',
+        'price_color' => '#ff4d8d',
+        'quote' => '"Signature cocktails in a cozy, hidden atmosphere"',
+        'tags' => ['🍸 Experimental drinks', '🤫 Hidden gem vibe', '✨ Aesthetic interior'],
+        'location' => 'West Lake',
+        'image' => '../image/venue_3.png',
+        'tab' => ['romantic', 'deep_talk'],
+    ],
+    [
+        'id' => 4,
+        'name' => 'Complex 01',
+        'type' => 'CREATIVE SPACE',
+        'price' => '150k – 300k',
+        'price_color' => '#ff4d8d',
+        'quote' => '"Create something together, break the ice naturally"',
+        'tags' => ['🎨 Art workshops', '🫶 Interactive activities', '✨ Unique first date'],
+        'location' => 'Tay Son',
+        'image' => '../image/venue_4.png',
+        'tab' => ['first_date', 'romantic', 'deep_talk'],
+    ],
+];
+
+// Filter by active tab
+if ($active_tab === 'saved') {
+    $filtered_venues = $venues; // We'll filter these via JS using localStorage
+} else {
+    $filtered_venues = array_filter($venues, function($v) use ($active_tab) {
+        return in_array($active_tab, $v['tab']);
+    });
 }
-
-// Determine online status (pseudo-random based on user_id for demo)
-foreach ($story_matches as &$sm) {
-    $sm['display_name'] = !empty($sm['nickname']) ? $sm['nickname'] : explode(' ', $sm['full_name'])[0];
-    $sm['is_online'] = ($sm['user_id'] % 3 !== 0); // Simple pseudo-online logic
-}
-unset($sm);
-
-// Get posts feed - posts from other users
-$stmt_posts = $conn->prepare("
-    SELECT 
-        po.id, po.caption, po.photo, po.mood_tag, po.shared_interest,
-        po.likes_count, po.comments_count, po.created_at, po.user_id,
-        p.full_name, p.nickname, p.avatar,
-        (SELECT COUNT(*) FROM post_likes pl WHERE pl.post_id = po.id AND pl.user_id = ?) as user_liked
-    FROM posts po
-    JOIN profiles p ON po.user_id = p.user_id
-    WHERE po.user_id != ?
-    ORDER BY po.created_at DESC
-    LIMIT 20
-");
-$stmt_posts->bind_param("ii", $user_id, $user_id);
-$stmt_posts->execute();
-$posts_raw = $stmt_posts->get_result()->fetch_all(MYSQLI_ASSOC);
-
-// Process posts
-$posts = [];
-foreach ($posts_raw as $p) {
-    $p['display_name'] = !empty($p['nickname']) ? $p['nickname'] : $p['full_name'];
-    $time_diff = time() - strtotime($p['created_at']);
-    if ($time_diff < 3600) $p['time_ago'] = round($time_diff / 60) . ' minutes ago';
-    elseif ($time_diff < 86400) $p['time_ago'] = round($time_diff / 3600) . ' hours ago';
-    else $p['time_ago'] = round($time_diff / 86400) . ' days ago';
-    $posts[] = $p;
-}
-
-// If no posts in DB yet, create demo posts so the page isn't empty
-if (empty($posts)) {
-    // Seed 2 demo posts from first two other users
-    $seed_users = $conn->query("SELECT p.user_id, p.full_name, p.nickname, p.avatar FROM profiles p WHERE p.user_id != $user_id LIMIT 2")->fetch_all(MYSQLI_ASSOC);
-    foreach ($seed_users as $idx => $su) {
-        $captions = [
-            "Finally made it to the coast! The energy here is exactly what I needed.\nNothing beats a Pacific sunset. 🌊",
-            "Exploring the city today, found this hidden gem of a cafe. The coffee is unreal ☕"
-        ];
-        $shared = !empty($my_interest_names) ? $my_interest_names[array_rand($my_interest_names)] : 'Travel';
-        $moods = ['Chill', 'Happy', 'Excited', 'Peaceful'];
-        $cap = $captions[$idx] ?? "Having an amazing day! Life is beautiful.";
-        $mood = $moods[$idx % count($moods)];
-        $conn->query("INSERT INTO posts (user_id, caption, photo, mood_tag, shared_interest, likes_count, comments_count, created_at) VALUES ({$su['user_id']}, " . $conn->real_escape_string(json_encode($cap)) . ", NULL, '$mood', '$shared', " . rand(80,200) . ", " . rand(5,30) . ", DATE_SUB(NOW(), INTERVAL " . rand(1,5) . " HOUR))");
-    }
-    // Re-fetch
-    $stmt_posts->execute();
-    $posts_raw2 = $stmt_posts->get_result()->fetch_all(MYSQLI_ASSOC);
-    foreach ($posts_raw2 as $p) {
-        $p['display_name'] = !empty($p['nickname']) ? $p['nickname'] : $p['full_name'];
-        $time_diff = time() - strtotime($p['created_at']);
-        if ($time_diff < 3600) $p['time_ago'] = round($time_diff / 60) . ' minutes ago';
-        elseif ($time_diff < 86400) $p['time_ago'] = round($time_diff / 3600) . ' hours ago';
-        else $p['time_ago'] = round($time_diff / 86400) . ' days ago';
-        $posts[] = $p;
-    }
-}
-
-// Get date spots
-$date_spots = $conn->query("SELECT * FROM date_spots ORDER BY sync_rate DESC LIMIT 4")->fetch_all(MYSQLI_ASSOC);
-
-// Get 2 recent matches for the Messages button avatars
-$recent_match_avatars = array_slice($story_matches, 0, 2);
-
-// Handle post like via AJAX
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'like_post') {
-    $post_id = (int)$_POST['post_id'];
-    $check = $conn->prepare("SELECT 1 FROM post_likes WHERE user_id = ? AND post_id = ?");
-    $check->bind_param("ii", $user_id, $post_id);
-    $check->execute();
-    if ($check->get_result()->num_rows > 0) {
-        $conn->prepare("DELETE FROM post_likes WHERE user_id = ? AND post_id = ?")->execute() || null;
-        $del = $conn->prepare("DELETE FROM post_likes WHERE user_id = ? AND post_id = ?");
-        $del->bind_param("ii", $user_id, $post_id);
-        $del->execute();
-        $conn->query("UPDATE posts SET likes_count = likes_count - 1 WHERE id = $post_id AND likes_count > 0");
-        echo json_encode(['liked' => false]);
-    } else {
-        $ins = $conn->prepare("INSERT INTO post_likes (user_id, post_id) VALUES (?, ?)");
-        $ins->bind_param("ii", $user_id, $post_id);
-        $ins->execute();
-        $conn->query("UPDATE posts SET likes_count = likes_count + 1 WHERE id = $post_id");
-        echo json_encode(['liked' => true]);
-    }
-    exit();
-}
-
-$my_avatar_url = !empty($current_user['avatar'])
-    ? '../uploads/' . htmlspecialchars($current_user['avatar'])
-    : 'https://ui-avatars.com/api/?name=' . urlencode($current_user['full_name'] ?? 'U') . '&background=e83e8c&color=fff&size=128';
-
-$my_display = htmlspecialchars($current_user['nickname'] ?? $current_user['full_name'] ?? 'You');
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -152,903 +99,744 @@ $my_display = htmlspecialchars($current_user['nickname'] ?? $current_user['full_
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Explore – SoulSync</title>
-    <meta name="description" content="Explore posts, stories and date spots from your SoulSync community.">
-    <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <meta name="description" content="Explore date spots and the perfect places for your moments.">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Be+Vietnam+Pro:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="../assets/style.css?v=<?= time() ?>">
     <style>
-        /* ── EXPLORE PAGE RESET ── */
-        body.dashboard-body { overflow: hidden; }
-        .explore-wrapper {
-            display: grid;
-            grid-template-columns: 1fr 320px;
-            gap: 0;
-            height: calc(100vh - 80px);
-            max-width: 1100px;
+        /* ── PAGE SHELL ── */
+        body.dashboard-body { overflow-y: auto; height: auto; background: #faf9fa; }
+        .datespots-page {
+            max-width: 1200px;
             margin: 0 auto;
-            padding: 0 24px;
+            padding: 48px 44px 80px;
         }
 
-        /* ── LEFT FEED ── */
-        .explore-feed {
-            overflow-y: auto;
-            padding: 28px 28px 28px 0;
-            display: flex;
-            flex-direction: column;
-            gap: 16px;
-        }
-        .explore-feed::-webkit-scrollbar { width: 4px; }
-        .explore-feed::-webkit-scrollbar-thumb { background: #f0f0f0; border-radius: 10px; }
-
-        .explore-page-title {
-            font-size: 2rem;
+        /* ── HEADER ── */
+        .ds-header { margin-bottom: 24px; }
+        .ds-title {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 36px;
             font-weight: 800;
-            color: var(--y2k-pink);
-            margin-bottom: 4px;
+            color: #8f0043;
+            line-height: 1.33;
+            margin: 0 0 4px;
+        }
+        .ds-subtitle {
+            font-family: 'Be Vietnam Pro', sans-serif;
+            font-size: 18px;
+            font-weight: 400;
+            color: #8f0043;
+            margin: 0;
         }
 
-        /* ── STORIES ROW ── */
-        .stories-row {
+        /* ── FILTER TABS ── */
+        .ds-filter-tabs {
             display: flex;
-            gap: 22px;
-            overflow-x: auto;
-            padding-bottom: 4px;
-            align-items: flex-start;
-        }
-        .stories-row::-webkit-scrollbar { display: none; }
-        .story-item {
-            display: flex;
-            flex-direction: column;
+            gap: 16px;
             align-items: center;
-            gap: 6px;
-            flex-shrink: 0;
+            margin-bottom: 32px;
+            flex-wrap: wrap;
+        }
+        .ds-tab {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 32px;
+            border-radius: 9999px;
+            font-family: 'Be Vietnam Pro', sans-serif;
+            font-size: 14px;
+            font-weight: 600;
             cursor: pointer;
             text-decoration: none;
+            transition: all 0.2s ease;
+            border: none;
+            box-shadow: 0 8px 16px rgba(26, 28, 29, 0.06);
         }
-        .story-avatar-ring {
-            width: 68px;
-            height: 68px;
-            border-radius: 50%;
-            padding: 3px;
-            background: linear-gradient(135deg, #ff4b82, #800040);
+        .ds-tab.active {
+            background: #ff4d8d;
+            color: #fff;
+        }
+        .ds-tab.inactive {
+            background: #fff;
+            color: #8f0043;
+        }
+        .ds-tab.inactive:hover {
+            background: #fff0f6;
+            transform: translateY(-1px);
+        }
+        .ds-tab .tab-emoji { font-size: 18px; line-height: 1; }
+
+        /* ── SECTION TITLE ── */
+        .ds-section-title {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 24px;
+            font-weight: 700;
+            color: #8f0043;
+            margin: 0 0 24px;
+        }
+
+        /* ── VENUE CARDS ── */
+        .venues-list {
+            display: flex;
+            flex-direction: column;
+            gap: 32px;
+            margin-bottom: 40px;
+        }
+
+        .venue-card {
+            background: #fff;
+            border-radius: 48px;
+            box-shadow: 0 8px 32px rgba(26, 28, 29, 0.06);
+            display: flex;
+            overflow: hidden;
+            height: 320px;
+            transition: transform 0.25s ease, box-shadow 0.25s ease;
+        }
+        .venue-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 16px 48px rgba(26, 28, 29, 0.12);
+        }
+
+        /* Left: Image */
+        .venue-image-wrap {
+            width: 320px;
+            flex-shrink: 0;
             position: relative;
-            transition: transform 0.2s;
+            overflow: hidden;
         }
-        .story-avatar-ring:hover { transform: scale(1.05); }
-        .story-avatar-ring img {
+        .venue-image-wrap img {
             width: 100%;
             height: 100%;
-            border-radius: 50%;
             object-fit: cover;
-            border: 2.5px solid #fff;
+            display: block;
+            transition: transform 0.4s ease;
         }
-        .story-online-dot {
+        .venue-card:hover .venue-image-wrap img {
+            transform: scale(1.04);
+        }
+        .venue-image-gradient {
             position: absolute;
-            bottom: 3px;
-            right: 3px;
-            width: 13px;
-            height: 13px;
-            background: #2ecc71;
-            border: 2px solid #fff;
-            border-radius: 50%;
+            inset: 0;
+            background: linear-gradient(to top, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0) 50%);
+            pointer-events: none;
         }
-        .story-name {
-            font-size: 0.72rem;
-            font-weight: 700;
-            color: #444;
-            text-align: center;
-            max-width: 68px;
-            overflow: hidden;
-            text-overflow: ellipsis;
+        .venue-location-pill {
+            position: absolute;
+            bottom: 24px;
+            left: 24px;
+            background: rgba(255,255,255,0.2);
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+            border-radius: 9999px;
+            padding: 4px 12px;
+            font-family: 'Be Vietnam Pro', sans-serif;
+            font-size: 12px;
+            font-weight: 500;
+            color: #fff;
             white-space: nowrap;
         }
 
-        /* ── POST COMPOSER ── */
-        .post-composer {
-            background: #fff;
-            border-radius: 16px;
-            padding: 14px 18px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-        }
-        .composer-top {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin-bottom: 12px;
-        }
-        .composer-avatar {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            object-fit: cover;
-            flex-shrink: 0;
-        }
-        .composer-input {
+        /* Right: Content */
+        .venue-content {
             flex: 1;
-            background: #fdf0f6;
-            border: none;
-            border-radius: 50px;
-            padding: 10px 18px;
-            font-size: 0.9rem;
-            color: #aaa;
-            cursor: pointer;
-            outline: none;
-            font-family: 'Public Sans', sans-serif;
-        }
-        .composer-input:focus { color: #333; }
-        .composer-actions {
+            padding: 32px;
             display: flex;
-            gap: 0;
-            border-top: 1px solid #f5f5f5;
-            padding-top: 10px;
+            flex-direction: column;
+            justify-content: space-between;
+            min-width: 0;
         }
-        .composer-action-btn {
-            flex: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            padding: 8px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 0.82rem;
-            font-weight: 700;
-            color: #666;
-            transition: background 0.2s;
-            border: none;
-            background: none;
-            font-family: 'Public Sans', sans-serif;
-        }
-        .composer-action-btn:hover { background: #fdf0f6; color: var(--y2k-pink); }
-        .composer-action-btn i { font-size: 1rem; }
-        .composer-action-btn.photo-btn i { color: #45b26b; }
-        .composer-action-btn.feeling-btn i { color: #f6a623; }
+        .venue-content-top { display: flex; flex-direction: column; gap: 8px; }
 
-        /* ── POST CARD ── */
-        .post-card {
-            background: #fff;
-            border-radius: 16px;
-            box-shadow: 0 2px 12px rgba(0,0,0,0.05);
-            overflow: hidden;
-        }
-        .post-card-header {
+        .venue-name-row {
             display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 16px 18px 12px;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 16px;
         }
-        .post-user-avatar {
-            width: 44px;
-            height: 44px;
-            border-radius: 50%;
-            object-fit: cover;
-            border: 2px solid #ffe5f0;
-            flex-shrink: 0;
+        .venue-name {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 24px;
+            font-weight: 700;
+            color: #8f0043;
+            margin: 0;
+            line-height: 1.33;
         }
-        .post-user-info { flex: 1; }
-        .post-user-name {
-            font-size: 0.95rem;
-            font-weight: 800;
-            color: #222;
+        .venue-price {
+            font-family: 'Be Vietnam Pro', sans-serif;
+            font-size: 14px;
+            font-weight: 500;
+            white-space: nowrap;
+            padding-top: 4px;
+        }
+
+        .venue-type {
+            font-family: 'Be Vietnam Pro', sans-serif;
+            font-size: 14px;
+            font-weight: 500;
+            color: #8f0043;
+            text-transform: uppercase;
+            letter-spacing: 1.4px;
             margin: 0;
         }
-        .post-time-ago {
-            font-size: 0.75rem;
-            color: #aaa;
-            font-weight: 600;
+
+        .venue-quote {
+            font-family: 'Be Vietnam Pro', sans-serif;
+            font-size: 18px;
+            font-weight: 300;
+            font-style: italic;
+            color: #8f0043;
+            margin: 4px 0 0;
+            line-height: 1.625;
         }
-        .post-menu-btn {
+
+        .venue-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            padding-top: 8px;
+        }
+        .venue-tag {
+            background: rgba(255, 126, 179, 0.1);
+            border: 1px solid rgba(255, 126, 179, 0.2);
+            border-radius: 9999px;
+            padding: 7px 17px;
+            font-family: 'Be Vietnam Pro', sans-serif;
+            font-size: 12px;
+            font-weight: 500;
+            color: #a33467;
+            white-space: nowrap;
+        }
+
+        /* Bottom action row */
+        .venue-action-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-top: 24px;
+            border-top: 1px solid #eeedee;
+            margin-top: 4px;
+        }
+        .venue-actions-left {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+        }
+        .venue-btn-text {
+            display: flex;
+            align-items: center;
+            gap: 6px;
             background: none;
             border: none;
-            color: #bbb;
-            font-size: 1.1rem;
+            font-family: 'Be Vietnam Pro', sans-serif;
+            font-size: 14px;
+            font-weight: 600;
+            color: #8f0043;
             cursor: pointer;
-            padding: 5px;
-            border-radius: 8px;
-            transition: background 0.2s;
+            padding: 0;
+            transition: opacity 0.2s;
         }
-        .post-menu-btn:hover { background: #f5f5f5; color: #555; }
+        .venue-btn-text:hover { opacity: 0.7; }
+        .venue-btn-text i { font-size: 16px; }
+        .venue-btn-text.saved i { color: #ff4d8d; }
 
-        /* ── POST IMAGE ── */
-        .post-image-wrap {
-            position: relative;
-            width: 100%;
-            max-height: 480px;
-            overflow: hidden;
-            background: #111;
+        .btn-suggest {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 12px 24px;
+            background: linear-gradient(to right, #ff4d8d, #ff7eb3);
+            color: #fff;
+            border-radius: 9999px;
+            border: none;
+            font-family: 'Be Vietnam Pro', sans-serif;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 10px 15px -3px rgba(255,77,141,0.2), 0 4px 6px -4px rgba(255,77,141,0.2);
+            transition: opacity 0.2s, transform 0.2s;
+            text-decoration: none;
+            white-space: nowrap;
         }
-        .post-image-wrap img {
+        .btn-suggest:hover { opacity: 0.9; transform: translateY(-1px); }
+
+        /* ── VIEW MORE ── */
+        .view-more-wrap {
+            display: flex;
+            justify-content: center;
+            margin: 8px 0 56px;
+        }
+        .btn-view-more {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 14px 40px;
+            background: linear-gradient(to right, #ff4d8d, #ff7eb3);
+            color: #fff;
+            border-radius: 9999px;
+            border: none;
+            font-family: 'Be Vietnam Pro', sans-serif;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 10px 20px rgba(255, 77, 141, 0.25);
+            transition: opacity 0.2s, transform 0.2s;
+        }
+        .btn-view-more:hover { opacity: 0.9; transform: translateY(-2px); }
+        .btn-view-more i { font-size: 16px; }
+
+        /* ── AI RECOMMENDATION SECTION ── */
+        .ds-recommendation {
+            background: linear-gradient(135deg, #f5e6f0 0%, #ede8f5 100%);
+            border-radius: 32px;
+            padding: 40px;
+            display: flex;
+            align-items: flex-start;
+            gap: 40px;
+        }
+        .rec-left { flex: 1; }
+        .rec-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-family: 'Be Vietnam Pro', sans-serif;
+            font-size: 12px;
+            font-weight: 600;
+            color: #8f0043;
+            margin-bottom: 12px;
+        }
+        .rec-title {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 28px;
+            font-weight: 800;
+            color: #1a1a2e;
+            margin: 0 0 8px;
+            line-height: 1.3;
+        }
+        .rec-desc {
+            font-family: 'Be Vietnam Pro', sans-serif;
+            font-size: 14px;
+            color: #666;
+            margin: 0;
+            max-width: 360px;
+            line-height: 1.6;
+        }
+
+        .rec-venues {
+            display: flex;
+            gap: 16px;
+            flex-shrink: 0;
+        }
+        .rec-venue-card {
+            background: #fff;
+            border-radius: 20px;
+            overflow: hidden;
+            width: 200px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+            cursor: pointer;
+            text-decoration: none;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .rec-venue-card:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,0.12); }
+        .rec-venue-img {
             width: 100%;
-            height: 480px;
+            height: 110px;
             object-fit: cover;
             display: block;
         }
-        .post-mood-badge {
-            position: absolute;
-            top: 16px;
-            right: 16px;
-            background: rgba(255,255,255,0.9);
-            backdrop-filter: blur(8px);
-            border-radius: 50px;
-            padding: 5px 14px;
-            font-size: 0.78rem;
-            font-weight: 800;
-            color: #333;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        .post-shared-interest {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background: rgba(255,255,255,0.88);
-            backdrop-filter: blur(10px);
-            padding: 12px 18px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-size: 0.9rem;
+        .rec-venue-info { padding: 12px 14px 14px; }
+        .rec-venue-name {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 13px;
             font-weight: 700;
-            color: #333;
-        }
-        .shared-interest-icon {
-            width: 28px;
-            height: 28px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #a78bfa, #7c3aed);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.85rem;
-            flex-shrink: 0;
-        }
-
-        /* ── POST ACTIONS ── */
-        .post-actions {
-            display: flex;
-            align-items: center;
-            padding: 12px 18px 8px;
-            gap: 18px;
-        }
-        .post-action-btn {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            background: none;
-            border: none;
-            color: #888;
-            font-size: 0.88rem;
-            font-weight: 700;
-            cursor: pointer;
-            padding: 4px 0;
-            transition: color 0.2s;
-            font-family: 'Public Sans', sans-serif;
-        }
-        .post-action-btn i { font-size: 1.1rem; transition: transform 0.2s; }
-        .post-action-btn:hover { color: var(--y2k-pink); }
-        .post-action-btn:hover i { transform: scale(1.15); }
-        .post-action-btn.liked { color: var(--y2k-pink); }
-        .post-action-btn.liked i { color: var(--y2k-pink); }
-        .post-save-btn {
-            margin-left: auto;
-            background: none;
-            border: none;
-            color: #bbb;
-            font-size: 1.1rem;
-            cursor: pointer;
-            transition: color 0.2s;
-        }
-        .post-save-btn:hover { color: var(--y2k-pink); }
-
-        /* ── POST CAPTION ── */
-        .post-caption {
-            padding: 4px 18px 16px;
-        }
-        .post-caption p {
-            font-size: 0.88rem;
-            color: #444;
-            line-height: 1.6;
-            margin: 0;
-        }
-
-        /* ── ASK ABOUT BTN ── */
-        .btn-ask-about {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            width: calc(100% - 36px);
-            margin: 0 18px 18px;
-            padding: 14px;
-            background: linear-gradient(135deg, #ff4b82, #e83e8c);
-            color: #fff;
-            border: none;
-            border-radius: 50px;
-            font-size: 0.92rem;
-            font-weight: 800;
-            cursor: pointer;
-            transition: opacity 0.2s, transform 0.2s;
-            font-family: 'Public Sans', sans-serif;
-        }
-        .btn-ask-about:hover { opacity: 0.9; transform: translateY(-1px); }
-
-        /* ── RIGHT SIDEBAR ── */
-        .explore-sidebar-right {
-            padding: 28px 0 28px 24px;
-            border-left: 1px solid #f0f0f0;
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-            overflow-y: auto;
-        }
-        .explore-sidebar-right::-webkit-scrollbar { width: 3px; }
-        .explore-sidebar-right::-webkit-scrollbar-thumb { background: #f0f0f0; border-radius: 10px; }
-
-        /* Search */
-        .explore-search {
-            display: flex;
-            align-items: center;
-            background: #fff;
-            border: 1.5px solid #ffd6e7;
-            border-radius: 50px;
-            padding: 10px 16px;
-            gap: 10px;
-        }
-        .explore-search input {
-            flex: 1;
-            border: none;
-            outline: none;
-            font-size: 0.85rem;
-            color: #555;
-            background: transparent;
-            font-family: 'Public Sans', sans-serif;
-        }
-        .explore-search input::placeholder { color: #ccc; }
-        .explore-search i { color: var(--y2k-pink); font-size: 0.95rem; }
-
-        /* Suggested header */
-        .sidebar-section-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .sidebar-section-title {
-            font-size: 1rem;
-            font-weight: 800;
-            color: var(--y2k-pink);
-        }
-        .sidebar-see-all {
-            font-size: 0.8rem;
-            font-weight: 700;
-            color: #888;
-            text-decoration: none;
-            transition: color 0.2s;
-        }
-        .sidebar-see-all:hover { color: var(--y2k-pink); }
-
-        /* Date spots */
-        .date-spots-label {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 10px;
-        }
-        .date-spots-label span {
-            font-size: 0.7rem;
-            font-weight: 800;
-            color: #bbb;
-            text-transform: uppercase;
-            letter-spacing: 0.8px;
-        }
-        .date-spot-item {
-            display: flex;
-            align-items: flex-start;
-            gap: 12px;
-            padding: 10px 0;
-            border-bottom: 1px solid #f5f5f5;
-            cursor: pointer;
-            transition: background 0.15s;
-            border-radius: 8px;
-        }
-        .date-spot-item:last-child { border-bottom: none; }
-        .date-spot-item:hover { background: #fdf0f6; padding-left: 6px; }
-        .date-spot-thumb {
-            width: 54px;
-            height: 54px;
-            border-radius: 10px;
-            object-fit: cover;
-            flex-shrink: 0;
-            position: relative;
-        }
-        .date-spot-thumb-wrap {
-            position: relative;
-            width: 54px;
-            height: 54px;
-            flex-shrink: 0;
-        }
-        .date-spot-thumb-wrap img {
-            width: 54px;
-            height: 54px;
-            border-radius: 10px;
-            object-fit: cover;
-        }
-        .sync-badge {
-            position: absolute;
-            bottom: -5px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: var(--y2k-pink);
-            color: #fff;
-            font-size: 0.58rem;
-            font-weight: 800;
-            padding: 2px 5px;
-            border-radius: 10px;
-            white-space: nowrap;
-        }
-        .date-spot-info { flex: 1; }
-        .date-spot-name {
-            font-size: 0.82rem;
-            font-weight: 800;
-            color: #222;
-            margin: 0 0 3px;
+            color: #1a1a2e;
+            margin: 0 0 2px;
             line-height: 1.3;
         }
-        .date-spot-desc {
-            font-size: 0.72rem;
-            color: #aaa;
-            line-height: 1.4;
+        .rec-venue-meta {
+            font-family: 'Be Vietnam Pro', sans-serif;
+            font-size: 11px;
+            color: #888;
             margin: 0;
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
         }
-
-        /* Messages Button */
-        .sidebar-messages-btn {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            background: #fff;
-            border: 2px solid var(--y2k-pink);
-            border-radius: 50px;
-            padding: 14px 20px;
+        .rec-venue-sync {
+            font-family: 'Be Vietnam Pro', sans-serif;
+            font-size: 11px;
+            font-weight: 700;
             color: var(--y2k-pink);
-            font-size: 1rem;
-            font-weight: 800;
-            cursor: pointer;
-            text-decoration: none;
-            transition: all 0.25s;
-            margin-top: auto;
+            margin: 4px 0 0;
         }
-        .sidebar-messages-btn:hover {
-            background: var(--y2k-pink);
-            color: #fff;
+
+        /* ── SUGGEST MODAL ── */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(4px);
         }
-        .sidebar-messages-btn i { font-size: 1.1rem; }
-        .msg-avatars-stack {
+        .modal-overlay.open { display: flex; }
+        .suggest-modal {
+            background: #fff;
+            border-radius: 32px;
+            padding: 40px;
+            max-width: 480px;
+            width: 90%;
+            box-shadow: 0 30px 60px rgba(0,0,0,0.2);
+            animation: modalIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        @keyframes modalIn { from { opacity:0; transform: scale(0.9) translateY(20px); } to { opacity:1; transform: scale(1) translateY(0); } }
+        .modal-emoji { font-size: 3rem; margin-bottom: 16px; }
+        .modal-title { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 24px; font-weight: 800; color: #8f0043; margin: 0 0 8px; }
+        .modal-desc { font-family: 'Be Vietnam Pro', sans-serif; font-size: 15px; color: #666; line-height: 1.6; margin: 0 0 28px; }
+        .modal-venue-name { color: #ff4d8d; font-weight: 700; }
+        .modal-actions { display: flex; gap: 12px; }
+        .btn-modal-send {
+            flex: 1; padding: 14px; background: linear-gradient(135deg, #ff4d8d, #800040);
+            color: #fff; border: none; border-radius: 16px; font-family: 'Be Vietnam Pro', sans-serif;
+            font-size: 15px; font-weight: 700; cursor: pointer; transition: opacity 0.2s;
+        }
+        .btn-modal-send:hover { opacity: 0.9; }
+        .btn-modal-cancel {
+            flex: 1; padding: 14px; background: #f5f5f5; color: #555; border: none;
+            border-radius: 16px; font-family: 'Be Vietnam Pro', sans-serif; font-size: 15px; font-weight: 600; cursor: pointer;
+        }
+
+        /* Suggest Modal Match List */
+        .match-select-list {
             display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 24px;
+            max-height: 180px;
+            overflow-y: auto;
+            padding-right: 8px;
+            text-align: left;
         }
-        .msg-avatars-stack img {
-            width: 28px;
-            height: 28px;
-            border-radius: 50%;
-            border: 2px solid #fff;
-            object-fit: cover;
-            margin-left: -8px;
-        }
-        .msg-avatars-stack img:first-child { margin-left: 0; }
-
-        /* ── EMPTY FEED ── */
-        .empty-feed-hint {
-            text-align: center;
-            padding: 60px 20px;
-            color: #ccc;
-        }
-        .empty-feed-hint i { font-size: 3rem; margin-bottom: 16px; color: #eee; }
-        .empty-feed-hint p { font-size: 0.95rem; font-weight: 600; }
-
-        /* Post image placeholder gradient */
-        .post-img-placeholder {
-            width: 100%;
-            height: 400px;
+        .match-select-list::-webkit-scrollbar { width: 4px; }
+        .match-select-list::-webkit-scrollbar-thumb { background: #eee; border-radius: 4px; }
+        .match-option {
             display: flex;
             align-items: center;
-            justify-content: center;
-            font-size: 4rem;
+            gap: 12px;
+            padding: 10px 14px;
+            border: 2px solid #f0f0f0;
+            border-radius: 16px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .match-option:hover { border-color: #ff4d8d; background: #fff0f6; }
+        .match-option input[type="radio"] {
+            accent-color: #ff4d8d;
+            transform: scale(1.2);
+            margin: 0 4px;
+        }
+        .match-option img {
+            width: 40px; height: 40px; border-radius: 50%; object-fit: cover;
+        }
+        .match-option span {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 15px; font-weight: 700; color: #333;
+        }
+
+        /* ── TOAST ── */
+        #ds-toast {
+            display: none; position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
+            background: #333; color: #fff; padding: 12px 28px; border-radius: 50px;
+            font-family: 'Be Vietnam Pro', sans-serif; font-weight: 700; z-index: 99999; font-size: 14px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        /* Responsive tweaks */
+        @media (max-width: 768px) {
+            .datespots-page { padding: 24px 20px 60px; }
+            .venue-card { flex-direction: column; height: auto; border-radius: 24px; }
+            .venue-image-wrap { width: 100%; height: 200px; }
+            .ds-recommendation { flex-direction: column; }
+            .rec-venues { flex-wrap: wrap; }
         }
     </style>
 </head>
 <body class="dashboard-body">
 
-    <?php include 'header.php'; ?>
+<?php include 'header.php'; ?>
 
-    <div class="explore-wrapper">
+<div class="datespots-page">
 
-        <!-- ══ LEFT: MAIN FEED ══ -->
-        <div class="explore-feed" id="explore-feed">
+    <div class="ds-header">
+        <h1 class="ds-title">Explore</h1>
+        <p class="ds-subtitle">Find the perfect place for your moment</p>
+    </div>
 
-            <h1 class="explore-page-title">Explore</h1>
+    <!-- ── FILTER TABS ── -->
+    <div class="ds-filter-tabs">
+        <a href="?tab=first_date" class="ds-tab <?= $active_tab === 'first_date' ? 'active' : 'inactive' ?>">
+            <span class="tab-emoji">💘</span> First Date
+        </a>
+        <a href="?tab=romantic" class="ds-tab <?= $active_tab === 'romantic' ? 'active' : 'inactive' ?>">
+            <span class="tab-emoji">🌹</span> Romantic
+        </a>
+        <a href="?tab=deep_talk" class="ds-tab <?= $active_tab === 'deep_talk' ? 'active' : 'inactive' ?>">
+            <span class="tab-emoji">☁️</span> Deep Talk
+        </a>
+        <a href="?tab=saved" class="ds-tab <?= $active_tab === 'saved' ? 'active' : 'inactive' ?>">
+            <span class="tab-emoji">💖</span> Saved
+        </a>
+    </div>
 
-            <!-- Stories Row -->
-            <div class="stories-row">
-                <?php foreach ($story_matches as $s): 
-                    $s_avatar = !empty($s['avatar'])
-                        ? '../uploads/' . htmlspecialchars($s['avatar'])
-                        : 'https://ui-avatars.com/api/?name=' . urlencode($s['display_name']) . '&background=e83e8c&color=fff&size=128';
-                ?>
-                <a href="view_profile.php?id=<?= $s['user_id'] ?>" class="story-item">
-                    <div class="story-avatar-ring">
-                        <img src="<?= $s_avatar ?>" alt="<?= htmlspecialchars($s['display_name']) ?>" onerror="this.src='https://ui-avatars.com/api/?name=U&background=random'">
-                        <?php if ($s['is_online']): ?>
-                            <span class="story-online-dot"></span>
-                        <?php endif; ?>
-                    </div>
-                    <span class="story-name"><?= htmlspecialchars($s['display_name']) ?></span>
-                </a>
-                <?php endforeach; ?>
+    <!-- ── SECTION TITLE ── -->
+    <h2 class="ds-section-title">
+        <?php if($active_tab === 'first_date'): ?>💘 First Date Picks
+        <?php elseif($active_tab === 'romantic'): ?>🌹 Romantic Picks
+        <?php elseif($active_tab === 'saved'): ?>💖 Saved Spots
+        <?php else: ?>☁️ Deep Talk Spots<?php endif; ?>
+    </h2>
 
-                <?php if (empty($story_matches)): ?>
-                <!-- Placeholder stories when no data -->
-                <?php $demo_names = ['Long', 'Ph Vu', 'Hiep', 'My', 'John', 'Sarah'];
-                      $demo_colors = ['e83e8c','ff6b9d','c0392b','8e44ad','2980b9','27ae60'];
-                      foreach ($demo_names as $di => $dn): ?>
-                <div class="story-item">
-                    <div class="story-avatar-ring">
-                        <img src="https://ui-avatars.com/api/?name=<?= urlencode($dn) ?>&background=<?= $demo_colors[$di] ?>&color=fff&size=128" alt="<?= $dn ?>">
-                        <?php if ($di % 3 !== 2): ?><span class="story-online-dot"></span><?php endif; ?>
-                    </div>
-                    <span class="story-name"><?= $dn ?></span>
-                </div>
-                <?php endforeach; ?>
-                <?php endif; ?>
-            </div>
+    <!-- ── VENUE CARDS ── -->
+    <div class="venues-list" id="venues-list">
+        <?php foreach ($filtered_venues as $venue): ?>
+        <div class="venue-card" id="venue-<?= $venue['id'] ?>">
 
-            <!-- Post Composer -->
-            <div class="post-composer">
-                <div class="composer-top">
-                    <img src="<?= $my_avatar_url ?>" alt="Me" class="composer-avatar" onerror="this.src='https://ui-avatars.com/api/?name=U&background=e83e8c&color=fff'">
-                    <input type="text" class="composer-input" id="composer-input" placeholder="What's on your mind?" onclick="openPostModal()">
-                </div>
-                <div class="composer-actions">
-                    <button class="composer-action-btn photo-btn" onclick="openPostModal()">
-                        <i class="fa-solid fa-image"></i> Photo/video
-                    </button>
-                    <button class="composer-action-btn feeling-btn" onclick="openPostModal()">
-                        <i class="fa-solid fa-face-smile"></i> Feeling/activity
-                    </button>
-                </div>
-            </div>
-
-            <!-- Posts Feed -->
-            <?php if (empty($posts)): ?>
-            <div class="empty-feed-hint">
-                <i class="fa-solid fa-rss"></i>
-                <p>No posts yet. Match with someone and start exploring!</p>
-            </div>
-            <?php else: ?>
-                <?php foreach ($posts as $post):
-                    $p_avatar = !empty($post['avatar'])
-                        ? '../uploads/' . htmlspecialchars($post['avatar'])
-                        : 'https://ui-avatars.com/api/?name=' . urlencode($post['display_name']) . '&background=random&color=fff&size=128';
-                    $shared_int = $post['shared_interest'] ?? (!empty($my_interest_names) ? $my_interest_names[0] : 'Travel');
-                ?>
-                <div class="post-card" id="post-<?= $post['id'] ?>">
-                    <!-- Post Header -->
-                    <div class="post-card-header">
-                        <a href="view_profile.php?id=<?= $post['user_id'] ?>">
-                            <img src="<?= $p_avatar ?>" alt="<?= htmlspecialchars($post['display_name']) ?>" class="post-user-avatar" onerror="this.src='https://ui-avatars.com/api/?name=U&background=random'">
-                        </a>
-                        <div class="post-user-info">
-                            <p class="post-user-name">
-                                <a href="view_profile.php?id=<?= $post['user_id'] ?>" style="text-decoration:none; color:inherit;">
-                                    <?= htmlspecialchars($post['display_name']) ?>
-                                </a>
-                            </p>
-                            <span class="post-time-ago"><?= htmlspecialchars($post['time_ago']) ?></span>
-                        </div>
-                        <button class="post-menu-btn" title="More options">
-                            <i class="fa-solid fa-ellipsis"></i>
-                        </button>
-                    </div>
-
-                    <!-- Post Image (or gradient placeholder) -->
-                    <div class="post-image-wrap">
-                        <?php if (!empty($post['photo'])): ?>
-                            <img src="../uploads/<?= htmlspecialchars($post['photo']) ?>" alt="Post photo" onerror="this.parentElement.style.background='linear-gradient(135deg,#1a1a2e,#16213e,#0f3460)'">
-                        <?php else:
-                            $gradients = [
-                                'linear-gradient(160deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)',
-                                'linear-gradient(160deg, #0d1b2a 0%, #1b263b 60%, #415a77 100%)',
-                                'linear-gradient(160deg, #2d1b69 0%, #11998e 100%)',
-                                'linear-gradient(160deg, #3a1c71 0%, #d76d77 50%, #ffaf7b 100%)',
-                            ];
-                            $gi = $post['id'] % count($gradients);
-                            $emojis = ['🌅', '🌊', '🌆', '🌸', '⛰️', '🌃'];
-                            $ei = $post['id'] % count($emojis);
-                        ?>
-                            <div class="post-img-placeholder" style="background: <?= $gradients[$gi] ?>">
-                                <?= $emojis[$ei] ?>
-                            </div>
-                        <?php endif; ?>
-
-                        <!-- Mood badge -->
-                        <?php if (!empty($post['mood_tag'])): ?>
-                        <div class="post-mood-badge">
-                            <?php
-                            $mood_icons = ['Chill'=>'🛋️','Happy'=>'😄','Excited'=>'🎉','Peaceful'=>'🌿','Sad'=>'😢','Romantic'=>'💕'];
-                            echo $mood_icons[$post['mood_tag']] ?? '✨';
-                            ?> <?= htmlspecialchars($post['mood_tag']) ?>
-                        </div>
-                        <?php endif; ?>
-
-                        <!-- Shared interest pill -->
-                        <div class="post-shared-interest">
-                            <div class="shared-interest-icon">
-                                <i class="fa-solid fa-star" style="color:#fff; font-size:0.7rem;"></i>
-                            </div>
-                            You both enjoy <?= htmlspecialchars($shared_int) ?> 
-                            <?php $travel_emojis = ['Travel'=>'🌊','Music'=>'🎵','Coffee'=>'☕','Reading'=>'📚','Gym'=>'💪','Pets'=>'🐾','Movies'=>'🎬','Cooking'=>'👨‍🍳','Gaming'=>'🎮','Art'=>'🎨','Photography'=>'📷','Dancing'=>'💃','Foodie'=>'🍜','Sports'=>'⚽','Karaoke'=>'🎤'];
-                            echo $travel_emojis[$shared_int] ?? '✨'; ?>
-                        </div>
-                    </div>
-
-                    <!-- Post Actions -->
-                    <div class="post-actions">
-                        <button class="post-action-btn like-btn <?= $post['user_liked'] ? 'liked' : '' ?>"
-                                id="like-btn-<?= $post['id'] ?>"
-                                onclick="toggleLike(<?= $post['id'] ?>, this)">
-                            <i class="<?= $post['user_liked'] ? 'fa-solid' : 'fa-regular' ?> fa-heart"></i>
-                            <span id="likes-count-<?= $post['id'] ?>"><?= number_format($post['likes_count']) ?></span>
-                        </button>
-
-                        <button class="post-action-btn">
-                            <i class="fa-regular fa-comment"></i>
-                            <span><?= number_format($post['comments_count']) ?></span>
-                        </button>
-
-                        <button class="post-action-btn" onclick="sharePost(<?= $post['id'] ?>)">
-                            <i class="fa-solid fa-share-nodes"></i>
-                        </button>
-
-                        <button class="post-save-btn" title="Save post">
-                            <i class="fa-regular fa-bookmark"></i>
-                        </button>
-                    </div>
-
-                    <!-- Caption -->
-                    <?php if (!empty($post['caption'])): ?>
-                    <div class="post-caption">
-                        <p><?= nl2br(htmlspecialchars(json_decode($post['caption']) ?? $post['caption'])) ?></p>
-                    </div>
-                    <?php endif; ?>
-
-                    <!-- Ask About Button -->
-                    <button class="btn-ask-about" onclick="askAboutPost(<?= $post['id'] ?>, '<?= htmlspecialchars(addslashes($post['display_name'])) ?>')">
-                        <i class="fa-solid fa-robot"></i>
-                        Ask about this
-                    </button>
-                </div>
-                <?php endforeach; ?>
-            <?php endif; ?>
-
-        </div><!-- /explore-feed -->
-
-
-        <!-- ══ RIGHT: SIDEBAR ══ -->
-        <aside class="explore-sidebar-right">
-
-            <!-- Search -->
-            <div class="explore-search">
-                <input type="text" placeholder="Find your friend ..." id="friend-search-input">
-                <i class="fa-solid fa-magnifying-glass"></i>
-            </div>
-
-            <!-- Date Spots -->
-            <div>
-                <div class="sidebar-section-header" style="margin-bottom:10px;">
-                    <span class="sidebar-section-title">Suggested for you</span>
-                    <a href="date_spots.php" class="sidebar-see-all">See all</a>
-                </div>
-
-                <div class="date-spots-label">
-                    <span>Date Spot</span>
-                    <a href="date_spots.php" style="color:inherit; text-decoration:none;"><span>View More</span></a>
-                </div>
-
-                <div class="date-spots-list">
-                    <?php
-                    $spot_images = [
-                        '../image/venue_1.png',
-                        '../image/venue_2.png',
-                        '../image/venue_3.png',
-                        '../image/venue_4.png',
-                    ];
-                    foreach ($date_spots as $si => $spot): ?>
-                    <a href="date_spot_detail.php?id=<?= $spot['id'] ?>" class="date-spot-item" style="text-decoration:none;">
-                        <div class="date-spot-thumb-wrap">
-                            <img src="<?= $spot_images[$si] ?? $spot_images[0] ?>" alt="<?= htmlspecialchars($spot['name']) ?>" onerror="this.src='../image/venue_1.png'">
-                            <span class="sync-badge"><?= $spot['sync_rate'] ?>% SYNC</span>
-                        </div>
-                        <div class="date-spot-info">
-                            <p class="date-spot-name"><?= htmlspecialchars($spot['name']) ?></p>
-                            <p class="date-spot-desc"><?= htmlspecialchars($spot['description']) ?></p>
-                        </div>
-                    </a>
-                    <?php endforeach; ?>
-
-                    <?php if (empty($date_spots)): ?>
-                    <!-- Static fallback -->
-                    <a href="date_spots.php" class="date-spot-item" style="text-decoration:none;">
-                        <div class="date-spot-thumb-wrap">
-                            <img src="../image/venue_1.png" alt="West Lake">
-                            <span class="sync-badge">96% SYNC</span>
-                        </div>
-                        <div class="date-spot-info">
-                            <p class="date-spot-name">West Lake (Trich Sai / Ve Ho area)</p>
-                            <p class="date-spot-desc">Enjoy a sunset walk, then grab a salted coffee from nearby street vendors.</p>
-                        </div>
-                    </a>
-                    <?php endif; ?>
-                </div>
-            </div>
-
-            <!-- Messages Button -->
-            <a href="messages.php" class="sidebar-messages-btn" style="margin-top: auto;">
-                <i class="fa-solid fa-paper-plane"></i>
-                Messages
-                <?php if (!empty($recent_match_avatars)): ?>
-                <div class="msg-avatars-stack">
-                    <?php foreach ($recent_match_avatars as $rma):
-                        $rma_av = !empty($rma['avatar'])
-                            ? '../uploads/' . htmlspecialchars($rma['avatar'])
-                            : 'https://ui-avatars.com/api/?name=' . urlencode($rma['display_name']) . '&background=random&color=fff&size=64';
-                    ?>
-                    <img src="<?= $rma_av ?>" alt="<?= htmlspecialchars($rma['display_name']) ?>" onerror="this.src='https://ui-avatars.com/api/?name=U&background=random&color=fff'">
-                    <?php endforeach; ?>
-                </div>
-                <?php endif; ?>
+            <!-- Image -->
+            <a href="date_spot_detail.php?id=<?= $venue['id'] ?>" class="venue-image-wrap" style="text-decoration:none; color:inherit;">
+                <img src="<?= htmlspecialchars($venue['image']) ?>" alt="<?= htmlspecialchars($venue['name']) ?>" onerror="this.src='https://images.unsplash.com/photo-1559339352-11d035aa65de?w=400'">
+                <div class="venue-image-gradient"></div>
+                <div class="venue-location-pill"><?= htmlspecialchars($venue['location']) ?></div>
             </a>
 
-        </aside>
+            <!-- Content -->
+            <div class="venue-content">
+                <div class="venue-content-top">
+                    <div class="venue-name-row">
+                        <h3 class="venue-name">
+                            <a href="date_spot_detail.php?id=<?= $venue['id'] ?>" style="text-decoration:none; color:inherit;"><?= htmlspecialchars($venue['name']) ?></a>
+                        </h3>
+                        <span class="venue-price" style="color: <?= $venue['price_color'] ?>;"><?= htmlspecialchars($venue['price']) ?></span>
+                    </div>
+                    <p class="venue-type"><?= htmlspecialchars($venue['type']) ?></p>
+                    <p class="venue-quote"><?= htmlspecialchars($venue['quote']) ?></p>
+                    <div class="venue-tags">
+                        <?php foreach ($venue['tags'] as $tag): ?>
+                        <span class="venue-tag"><?= htmlspecialchars($tag) ?></span>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
 
-    </div><!-- /explore-wrapper -->
+                <!-- Actions -->
+                <div class="venue-action-row">
+                    <div class="venue-actions-left">
+                        <button class="venue-btn-text save-btn" id="save-btn-<?= $venue['id'] ?>" onclick="toggleSave(<?= $venue['id'] ?>, this)" title="Save this venue">
+                            <i class="fa-regular fa-heart"></i>
+                            <span>Save</span>
+                        </button>
+                        <button class="venue-btn-text" onclick="viewDetails(<?= $venue['id'] ?>)" title="View venue details">
+                            <i class="fa-solid fa-location-dot"></i>
+                            <span>View Details</span>
+                        </button>
+                    </div>
+                    <button class="btn-suggest" onclick="openSuggestModal(<?= $venue['id'] ?>, '<?= htmlspecialchars(addslashes($venue['name'])) ?>')">
+                        Suggest to Match
+                    </button>
+                </div>
+            </div>
+        </div>
+        <?php endforeach; ?>
 
-    <!-- ══ POST COMPOSER MODAL ══ -->
-    <div id="post-modal-overlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:9999; justify-content:center; align-items:center;" onclick="closePostModalOnOverlay(event)">
-        <div style="background:#fff; border-radius:20px; padding:30px; width:100%; max-width:540px; box-shadow:0 30px 60px rgba(0,0,0,0.2);">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-                <h3 style="font-size:1.2rem; color:#333; margin:0;">Create Post</h3>
-                <button onclick="closePostModal()" style="background:none; border:none; font-size:1.5rem; color:#aaa; cursor:pointer;">&times;</button>
-            </div>
-            <div style="display:flex; align-items:center; gap:12px; margin-bottom:16px;">
-                <img src="<?= $my_avatar_url ?>" style="width:44px; height:44px; border-radius:50%; object-fit:cover;" onerror="this.src='https://ui-avatars.com/api/?name=U&background=e83e8c&color=fff'">
-                <strong style="font-size:0.95rem;"><?= $my_display ?></strong>
-            </div>
-            <textarea id="post-text" placeholder="What's on your mind, <?= $my_display ?>?" style="width:100%; height:120px; border:none; resize:none; font-size:1rem; outline:none; color:#333; font-family:'Public Sans',sans-serif;" oninput="this.style.height='auto'; this.style.height=this.scrollHeight+'px'"></textarea>
-            <div style="display:flex; gap:10px; margin-bottom:16px;">
-                <select id="post-mood" style="border:1.5px solid #eee; border-radius:10px; padding:8px 12px; font-size:0.85rem; outline:none; font-family:'Public Sans',sans-serif;">
-                    <option value="">😊 Feeling/Activity</option>
-                    <option value="Chill">🛋️ Chill</option>
-                    <option value="Happy">😄 Happy</option>
-                    <option value="Excited">🎉 Excited</option>
-                    <option value="Peaceful">🌿 Peaceful</option>
-                    <option value="Romantic">💕 Romantic</option>
-                </select>
-            </div>
-            <button onclick="submitPost()" style="width:100%; padding:14px; background:linear-gradient(135deg,#ff4b82,#800040); color:#fff; border:none; border-radius:12px; font-size:1rem; font-weight:800; cursor:pointer; font-family:'Public Sans',sans-serif;">
-                Post
-            </button>
+        <?php if (empty($filtered_venues)): ?>
+        <div style="text-align:center; padding: 80px 20px; color: #bbb;">
+            <div style="font-size:3rem; margin-bottom:16px;">🗺️</div>
+            <p style="font-family:'Be Vietnam Pro',sans-serif; font-size:1.1rem; font-weight:600;">No spots found for this category yet.</p>
+        </div>
+        <?php endif; ?>
+    </div>
+
+    <!-- ── VIEW MORE ── -->
+    <div class="view-more-wrap">
+        <button class="btn-view-more" onclick="showToast('🔜 More venues coming soon!')">
+            <i class="fa-solid fa-compass"></i>
+            VIEW MORE
+        </button>
+    </div>
+
+    <!-- ── AI RECOMMENDATION ── -->
+    <div class="ds-recommendation">
+        <div class="rec-left">
+            <p class="rec-badge">✨ Recommended for you</p>
+            <h2 class="rec-title">Based on your vibe:<br>Romantic & Calm</h2>
+            <p class="rec-desc">We've found two spots that perfectly match your SoulSync profile preferences for intimate settings.</p>
+        </div>
+        <div class="rec-venues">
+            <a href="date_spot_detail.php?id=3" class="rec-venue-card">
+                <img src="../image/venue_3.png" alt="The Alchemist" class="rec-venue-img" onerror="this.src='https://images.unsplash.com/photo-1559339352-11d035aa65de?w=400'">
+                <div class="rec-venue-info">
+                    <p class="rec-venue-name">The Alchemist</p>
+                    <p class="rec-venue-meta">
+                        Modern Ambiance • Old Quarter<br>
+                        <span class="rec-venue-sync">❤️ 93 Likes</span>
+                    </p>
+                </div>
+            </a>
+            <a href="date_spot_detail.php?id=1" class="rec-venue-card">
+                <img src="../image/venue_1.png" alt="Lighthouse Sky Bar" class="rec-venue-img" onerror="this.src='https://images.unsplash.com/photo-1559339352-11d035aa65de?w=400'">
+                <div class="rec-venue-info">
+                    <p class="rec-venue-name">Lighthouse Sky Bar</p>
+                    <p class="rec-venue-meta">
+                        Rooftop Bar • Hoan Kiem<br>
+                        <span class="rec-venue-sync">❤️ 90 Likes</span>
+                    </p>
+                </div>
+            </a>
         </div>
     </div>
 
-    <div id="toast-msg" style="display:none; position:fixed; bottom:30px; left:50%; transform:translateX(-50%); background:#333; color:#fff; padding:12px 24px; border-radius:50px; font-weight:700; z-index:99999; font-size:0.9rem;"></div>
+</div><!-- /datespots-page -->
 
-    <script>
-    // ── LIKE TOGGLE ──
-    function toggleLike(postId, btn) {
-        fetch('explore.php', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: `action=like_post&post_id=${postId}`
-        })
-        .then(r => r.json())
-        .then(data => {
-            const countEl = document.getElementById(`likes-count-${postId}`);
-            const icon = btn.querySelector('i');
-            let count = parseInt(countEl.textContent.replace(/,/g, ''));
-            if (data.liked) {
-                btn.classList.add('liked');
-                icon.classList.remove('fa-regular');
-                icon.classList.add('fa-solid');
-                countEl.textContent = (count + 1).toLocaleString();
-                icon.style.transform = 'scale(1.3)';
-                setTimeout(() => icon.style.transform = '', 300);
+<!-- ── SUGGEST MODAL ── -->
+<div class="modal-overlay" id="suggest-modal" onclick="closeModalOnOverlay(event)">
+    <div class="suggest-modal">
+        <div class="modal-emoji" style="text-align:center;">💌</div>
+        <h3 class="modal-title" style="text-align:center;">Suggest a Date Spot?</h3>
+        <p class="modal-desc" style="text-align:center; margin-bottom: 16px;">
+            Send <strong class="modal-venue-name" id="modal-venue-name">this venue</strong> to your match. Who would you like to invite?
+        </p>
+        
+        <div class="match-select-list">
+            <?php foreach ($rec_matches as $match): 
+                $m_avatar = !empty($match['avatar']) ? '../uploads/' . htmlspecialchars($match['avatar']) : 'https://ui-avatars.com/api/?name=' . urlencode($match['nickname'] ?? $match['full_name']) . '&background=random&color=fff';
+                $m_name = htmlspecialchars($match['nickname'] ?? $match['full_name']);
+            ?>
+            <label class="match-option">
+                <input type="radio" name="suggest_match_id" value="<?= $match['user_id'] ?>">
+                <img src="<?= $m_avatar ?>" alt="<?= $m_name ?>">
+                <span><?= $m_name ?></span>
+            </label>
+            <?php endforeach; ?>
+            <?php if(empty($rec_matches)): ?>
+            <p style="text-align:center; color:#888; font-size:14px; margin: 10px 0;">You don't have any matches yet.</p>
+            <?php endif; ?>
+        </div>
+
+        <div class="modal-actions">
+            <button class="btn-modal-send" onclick="sendSuggestion()">
+                <i class="fa-solid fa-paper-plane"></i> Send Suggestion
+            </button>
+            <button class="btn-modal-cancel" onclick="closeSuggestModal()">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<div id="ds-toast"></div>
+
+<script>
+let currentVenueId = null;
+let savedVenues = new Set(JSON.parse(localStorage.getItem('saved_venues') || '[]'));
+const activeTab = "<?= $active_tab ?>";
+
+// Apply saved state on load
+document.addEventListener('DOMContentLoaded', () => {
+    savedVenues.forEach(id => {
+        const btn = document.getElementById(`save-btn-${id}`);
+        if (btn) {
+            btn.querySelector('i').classList.replace('fa-regular', 'fa-solid');
+            btn.querySelector('i').style.color = '#ff4d8d';
+            btn.classList.add('saved');
+        }
+    });
+
+    if (activeTab === 'saved') {
+        const list = document.getElementById('venues-list');
+        const cards = list.querySelectorAll('.venue-card');
+        let visibleCount = 0;
+        
+        cards.forEach(card => {
+            const id = card.id.replace('venue-', '');
+            // Check both string and int representations
+            if (!savedVenues.has(parseInt(id, 10)) && !savedVenues.has(id)) {
+                card.style.display = 'none';
             } else {
-                btn.classList.remove('liked');
-                icon.classList.remove('fa-solid');
-                icon.classList.add('fa-regular');
-                countEl.textContent = Math.max(0, count - 1).toLocaleString();
+                visibleCount++;
             }
         });
-    }
-
-    // ── SHARE ──
-    function sharePost(postId) {
-        const url = window.location.origin + window.location.pathname + '?highlight=' + postId;
-        if (navigator.clipboard) {
-            navigator.clipboard.writeText(url).then(() => showToast('🔗 Link copied!'));
-        } else {
-            showToast('🔗 Link: ' + url);
+        
+        if (visibleCount === 0) {
+            const emptyMsg = document.createElement('div');
+            emptyMsg.style.textAlign = 'center';
+            emptyMsg.style.padding = '80px 20px';
+            emptyMsg.style.color = '#888';
+            emptyMsg.innerHTML = '<i class="fa-regular fa-heart" style="font-size:4rem; color:#ddd; margin-bottom:20px;"></i><br><p style="font-family:\'Plus Jakarta Sans\', sans-serif; font-size:20px; font-weight:800; color:#333; margin:0 0 8px;">No saved spots yet</p><p style="font-family:\'Be Vietnam Pro\', sans-serif; font-size:15px; margin:0;">Spots you save will appear here for easy access.</p>';
+            list.appendChild(emptyMsg);
         }
     }
+});
 
-    // ── ASK ABOUT ──
-    function askAboutPost(postId, name) {
-        window.location.href = `messages.php?ai_ask=1&about_user=${encodeURIComponent(name)}`;
+function toggleSave(venueId, btn) {
+    const icon = btn.querySelector('i');
+    if (savedVenues.has(venueId)) {
+        savedVenues.delete(venueId);
+        icon.classList.replace('fa-solid', 'fa-regular');
+        icon.style.color = '';
+        btn.classList.remove('saved');
+        showToast('💔 Removed from saved spots');
+        
+        // Hide card dynamically if we're on the Saved tab
+        if (activeTab === 'saved') {
+            const card = document.getElementById('venue-' + venueId);
+            if (card) card.style.display = 'none';
+        }
+    } else {
+        savedVenues.add(venueId);
+        icon.classList.replace('fa-regular', 'fa-solid');
+        icon.style.color = '#ff4d8d';
+        btn.classList.add('saved');
+        icon.style.transform = 'scale(1.4)';
+        setTimeout(() => icon.style.transform = '', 300);
+        showToast('💗 Saved to your date spots!');
     }
+    localStorage.setItem('saved_venues', JSON.stringify([...savedVenues]));
+}
 
-    // ── POST MODAL ──
-    function openPostModal() {
-        const modal = document.getElementById('post-modal-overlay');
-        modal.style.display = 'flex';
-        setTimeout(() => document.getElementById('post-text').focus(), 100);
-    }
-    function closePostModal() {
-        document.getElementById('post-modal-overlay').style.display = 'none';
-    }
-    function closePostModalOnOverlay(e) {
-        if (e.target === document.getElementById('post-modal-overlay')) closePostModal();
-    }
+function viewDetails(venueId) {
+    window.location.href = 'date_spot_detail.php?id=' + venueId;
+}
 
-    function submitPost() {
-        const text = document.getElementById('post-text').value.trim();
-        const mood = document.getElementById('post-mood').value;
-        if (!text) { showToast('⚠️ Please write something first!'); return; }
-        fetch('../api/api_post.php', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: `action=create_post&caption=${encodeURIComponent(text)}&mood_tag=${encodeURIComponent(mood)}`
-        })
-        .then(r => r.json())
-        .then(data => {
-            if (data.status === 'success') {
-                showToast('✅ Post shared!');
-                closePostModal();
-                setTimeout(() => location.reload(), 1200);
-            } else {
-                showToast('❌ ' + (data.message || 'Error posting'));
-            }
-        })
-        .catch(() => {
-            // Optimistic UI: just reload
-            showToast('✅ Post shared!');
-            closePostModal();
-            setTimeout(() => location.reload(), 1200);
-        });
+function openSuggestModal(venueId, venueName) {
+    currentVenueId = venueId;
+    document.getElementById('modal-venue-name').textContent = venueName;
+    document.getElementById('suggest-modal').classList.add('open');
+}
+
+function closeSuggestModal() {
+    document.getElementById('suggest-modal').classList.remove('open');
+    currentVenueId = null;
+}
+
+function closeModalOnOverlay(e) {
+    if (e.target === document.getElementById('suggest-modal')) closeSuggestModal();
+}
+
+function sendSuggestion() {
+    closeSuggestModal();
+    showToast('💌 Date spot suggestion sent to your match!');
+}
+
+function highlightCard(venueId) {
+    const card = document.getElementById(`venue-${venueId}`);
+    if (card) {
+        card.style.boxShadow = '0 0 0 3px #ff4d8d, 0 16px 48px rgba(255,77,141,0.2)';
+        setTimeout(() => card.style.boxShadow = '', 2000);
     }
+}
 
-    // ── TOAST ──
-    function showToast(msg) {
-        const t = document.getElementById('toast-msg');
-        t.textContent = msg;
-        t.style.display = 'block';
-        setTimeout(() => { t.style.display = 'none'; }, 2800);
-    }
-
-    // ── FRIEND SEARCH (client-side filter) ──
-    document.getElementById('friend-search-input').addEventListener('input', function() {
-        const q = this.value.toLowerCase();
-        document.querySelectorAll('.story-item').forEach(item => {
-            const name = item.querySelector('.story-name').textContent.toLowerCase();
-            item.style.display = name.includes(q) ? 'flex' : 'none';
-        });
-    });
-    </script>
-
+function showToast(msg) {
+    const t = document.getElementById('ds-toast');
+    t.textContent = msg;
+    t.style.display = 'block';
+    clearTimeout(t._timer);
+    t._timer = setTimeout(() => t.style.display = 'none', 2800);
+}
+</script>
 </body>
 </html>
