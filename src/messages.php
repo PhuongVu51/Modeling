@@ -369,11 +369,28 @@ if ($chat_with_id > 0) {
                     </div>
                     <div class="chat-history" id="chatHistory">
                         <div class="chat-date-divider"><span style="background:#16111f; color:#888; border-color:rgba(255,255,255,0.1);">TODAY</span></div>
-                        <?php foreach($chat_history as $msg): $is_me = ($msg['sender_id'] == $user_id); ?>
+                        <?php foreach($chat_history as $msg): $is_me = ($msg['sender_id'] == $user_id); 
+                            $raw_msg = $msg['message_text'];
+                            $is_ds_tag = (strpos($raw_msg, 'DATE_SPOT_TAG:') === 0);
+                            $ds_data = $is_ds_tag ? json_decode(substr($raw_msg, 14), true) : null;
+                        ?>
                             <div class="msg-row <?= $is_me ? 'me' : 'them' ?>">
                                 <?php if(!$is_me): ?><div class="blind-avatar-placeholder" style="width:35px; height:35px; font-size:0.8rem;"></div><?php endif; ?>
                                 <div class="msg-bubble-wrap">
-                                    <div class="msg-bubble"><?= htmlspecialchars($msg['message_text']) ?></div>
+                                    <div class="msg-bubble" <?php if($is_ds_tag) echo 'style="padding:0; background:transparent; box-shadow:none; border:none;"'; ?>>
+                                        <?php if($is_ds_tag && $ds_data): ?>
+                                            <div style="background:#fff; border-radius:16px; overflow:hidden; border:1px solid #ffe6f0; width:220px; box-shadow:0 4px 15px rgba(0,0,0,0.05);">
+                                                <img src="<?= htmlspecialchars($ds_data['image']) ?>" style="width:100%; height:120px; object-fit:cover;">
+                                                <div style="padding:12px;">
+                                                    <div style="font-family:'Public Sans', sans-serif; font-weight:800; font-size:15px; color:#1a1a2e; margin-bottom:4px;"><?= htmlspecialchars($ds_data['name']) ?></div>
+                                                    <div style="color:#ff4d8d; font-size:13px; font-weight:700; margin-bottom:12px;">❤️ <?= htmlspecialchars($ds_data['likes']) ?> Likes</div>
+                                                    <a href="<?= htmlspecialchars($ds_data['map_url']) ?>" target="_blank" style="display:block; text-align:center; background:linear-gradient(135deg, #ff4d8d, #ff7eb3); color:#fff; padding:8px; border-radius:8px; font-size:13px; font-weight:bold; text-decoration:none;">View on Map</a>
+                                                </div>
+                                            </div>
+                                        <?php else: ?>
+                                            <?= htmlspecialchars($raw_msg) ?>
+                                        <?php endif; ?>
+                                    </div>
                                     <div class="msg-meta"><?= date("h:i A", strtotime($msg['created_at'])) ?> <?php if($is_me): ?><i class="fa-solid fa-check-double"></i><?php endif; ?></div>
                                 </div>
                             </div>
@@ -420,11 +437,28 @@ if ($chat_with_id > 0) {
                     <div class="chat-header-actions"><i class="fa-solid fa-video"></i><i class="fa-solid fa-phone"></i></div>
                 </div>
                 <div class="chat-history" id="chatHistory">
-                    <?php foreach($chat_history as $msg): $is_me = ($msg['sender_id'] == $user_id); ?>
+                    <?php foreach($chat_history as $msg): $is_me = ($msg['sender_id'] == $user_id); 
+                        $raw_msg = $msg['message_text'];
+                        $is_ds_tag = (strpos($raw_msg, 'DATE_SPOT_TAG:') === 0);
+                        $ds_data = $is_ds_tag ? json_decode(substr($raw_msg, 14), true) : null;
+                    ?>
                         <div class="msg-row <?= $is_me ? 'me' : 'them' ?>">
                             <?php if(!$is_me): ?><img src="../uploads/<?= htmlspecialchars($chat_partner['avatar'] ?: 'default.jpg') ?>" onerror="this.src='https://ui-avatars.com/api/?name=U'"><?php endif; ?>
                             <div class="msg-bubble-wrap">
-                                <div class="msg-bubble"><?= htmlspecialchars($msg['message_text']) ?></div>
+                                <div class="msg-bubble" <?php if($is_ds_tag) echo 'style="padding:0; background:transparent; box-shadow:none; border:none;"'; ?>>
+                                    <?php if($is_ds_tag && $ds_data): ?>
+                                        <div style="background:#fff; border-radius:16px; overflow:hidden; border:1px solid #ffe6f0; width:220px; box-shadow:0 4px 15px rgba(0,0,0,0.05);">
+                                            <img src="<?= htmlspecialchars($ds_data['image']) ?>" style="width:100%; height:120px; object-fit:cover;">
+                                            <div style="padding:12px;">
+                                                <div style="font-family:'Public Sans', sans-serif; font-weight:800; font-size:15px; color:#1a1a2e; margin-bottom:4px;"><?= htmlspecialchars($ds_data['name']) ?></div>
+                                                <div style="color:#ff4d8d; font-size:13px; font-weight:700; margin-bottom:12px;">❤️ <?= htmlspecialchars($ds_data['likes']) ?> Likes</div>
+                                                <a href="<?= htmlspecialchars($ds_data['map_url']) ?>" target="_blank" style="display:block; text-align:center; background:linear-gradient(135deg, #ff4d8d, #ff7eb3); color:#fff; padding:8px; border-radius:8px; font-size:13px; font-weight:bold; text-decoration:none;">View on Map</a>
+                                            </div>
+                                        </div>
+                                    <?php else: ?>
+                                        <?= htmlspecialchars($raw_msg) ?>
+                                    <?php endif; ?>
+                                </div>
                                 <div class="msg-meta"><?= date("h:i A", strtotime($msg['created_at'])) ?> <?php if($is_me): ?><i class="fa-solid fa-check-double"></i><?php endif; ?></div>
                             </div>
                         </div>
