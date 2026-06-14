@@ -43,7 +43,7 @@ $venues = [
         'quote' => '"View Old Quarter & Chuong Duong Bridge"',
         'tags' => ['💗 Perfect for romantic nights', '☕ Great for deep conversations', '🎲 Easy first date spot'],
         'location' => 'Hoan Kiem',
-        'image' => '../image/venue_1.png',
+        'image' => '../image/lighthouseskybar.jpg',
         'tab' => ['first_date', 'romantic'],
     ],
     [
@@ -55,7 +55,7 @@ $venues = [
         'quote' => '"See Hanoi from above and share the moment"',
         'tags' => ['🏙️ 65th floor view', '📸 Instagram-worthy', '💫 Exciting first date'],
         'location' => 'Lieu Giai',
-        'image' => '../image/venue_2.png',
+        'image' => '../image/lotteobservationdeck.jpg',
         'tab' => ['first_date', 'deep_talk'],
     ],
     [
@@ -67,7 +67,7 @@ $venues = [
         'quote' => '"Signature cocktails in a cozy, hidden atmosphere"',
         'tags' => ['🍸 Experimental drinks', '🤫 Hidden gem vibe', '✨ Aesthetic interior'],
         'location' => 'West Lake',
-        'image' => '../image/venue_3.png',
+        'image' => '../image/thealchemist.jpg',
         'tab' => ['romantic', 'deep_talk'],
     ],
     [
@@ -79,7 +79,7 @@ $venues = [
         'quote' => '"Create something together, break the ice naturally"',
         'tags' => ['🎨 Art workshops', '🫶 Interactive activities', '✨ Unique first date'],
         'location' => 'Tay Son',
-        'image' => '../image/venue_4.png',
+        'image' => '../image/complex01.jpg',
         'tab' => ['first_date', 'romantic', 'deep_talk'],
     ],
 ];
@@ -670,7 +670,7 @@ if ($active_tab === 'saved') {
         </div>
         <div class="rec-venues">
             <a href="date_spot_detail.php?id=3" class="rec-venue-card">
-                <img src="../image/venue_3.png" alt="The Alchemist" class="rec-venue-img" onerror="this.src='https://images.unsplash.com/photo-1559339352-11d035aa65de?w=400'">
+                <img src="../image/thealchemist.jpg" alt="The Alchemist" class="rec-venue-img" onerror="this.src='https://images.unsplash.com/photo-1559339352-11d035aa65de?w=400'">
                 <div class="rec-venue-info">
                     <p class="rec-venue-name">The Alchemist</p>
                     <p class="rec-venue-meta">
@@ -680,7 +680,7 @@ if ($active_tab === 'saved') {
                 </div>
             </a>
             <a href="date_spot_detail.php?id=1" class="rec-venue-card">
-                <img src="../image/venue_1.png" alt="Lighthouse Sky Bar" class="rec-venue-img" onerror="this.src='https://images.unsplash.com/photo-1559339352-11d035aa65de?w=400'">
+                <img src="../image/lighthouseskybar.jpg" alt="Lighthouse Sky Bar" class="rec-venue-img" onerror="this.src='https://images.unsplash.com/photo-1559339352-11d035aa65de?w=400'">
                 <div class="rec-venue-info">
                     <p class="rec-venue-name">Lighthouse Sky Bar</p>
                     <p class="rec-venue-meta">

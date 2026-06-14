@@ -47,7 +47,7 @@ $venue_data = [
     1 => [
         'name'     => 'Lighthouse Sky Bar',
         'description' => 'A premier rooftop bar offering a stunning panoramic view of Hanoi\'s Old Quarter and Chuong Duong Bridge. Enjoy the sunset with premium cocktails.',
-        'image'    => '../image/venue_1.png',
+        'image'    => '../image/lighthouseskybar.jpg',
         'type'     => 'ROOFTOP BAR',
         'price'    => '250k – 500k',
         'price_color' => '#8d7076',
@@ -68,7 +68,7 @@ $venue_data = [
     2 => [
         'name'     => 'Sky Walk Lotte',
         'description' => 'Located on the 65th floor of the Lotte Center, this observation deck features glass-floor panels and breathtaking 360-degree views of the city. A perfect spot for golden hour photography and exciting moments.',
-        'image'    => '../image/venue_2.png',
+        'image'    => '../image/lotteobservationdeck.jpg',
         'type'     => 'CITY VIEW EXPERIENCE',
         'price'    => '150k – 300k',
         'price_color' => '#ff4d8d',
@@ -89,7 +89,7 @@ $venue_data = [
     3 => [
         'name'     => 'The Alchemist',
         'description' => 'A hidden speakeasy tucked behind a lush garden entrance. It features low-lighting, intimate booths, and craft cocktails made with locally-sourced Vietnamese herbs—ideal for deep, honest conversations.',
-        'image'    => '../image/venue_3.png',
+        'image'    => '../image/thealchemist.jpg',
         'type'     => 'COCKTAIL BAR & SPEAKEASY',
         'price'    => '150k – 300k',
         'price_color' => '#ff4d8d',
@@ -110,7 +110,7 @@ $venue_data = [
     4 => [
         'name'     => 'Complex 01',
         'description' => 'A vibrant creative space hosting monthly themed art workshops like pottery and painting. It offers an open courtyard with interactive installations, making it the perfect icebreaker for a first date.',
-        'image'    => '../image/venue_4.png',
+        'image'    => '../image/complex01.jpg',
         'type'     => 'CREATIVE SPACE',
         'price'    => '150k – 300k',
         'price_color' => '#ff4d8d',
@@ -131,7 +131,7 @@ $venue_data = [
 ];
 
 $vd = $venue_data[$spot_id] ?? [
-    'image'      => '../image/venue_1.png',
+    'image'      => '../image/lighthouseskybar.jpg',
     'type'       => 'VENUE',
     'price'      => 'See website',
     'price_color'=> '#ff4d8d',
@@ -609,7 +609,7 @@ $vd = $venue_data[$spot_id] ?? [
     <img src="<?= htmlspecialchars($vd['image']) ?>"
          alt="<?= htmlspecialchars($vd['name'] ?? $spot['name']) ?>"
          class="ds-hero-img"
-         onerror="this.src='../image/venue_1.png'">
+         onerror="this.src='../image/lighthouseskybar.jpg'">
     <div class="ds-hero-gradient"></div>
 
     <!-- Back button -->
@@ -624,7 +624,7 @@ $vd = $venue_data[$spot_id] ?? [
             <p class="ds-hero-type"><?= htmlspecialchars($vd['type']) ?></p>
         </div>
         <div class="ds-hero-sync-badge">
-            ❤️ <?= $spot['sync_rate'] ?>% SYNC
+            ❤️ <?= $spot['sync_rate'] ?> Likes
         </div>
     </div>
 </div>
@@ -724,10 +724,10 @@ $vd = $venue_data[$spot_id] ?? [
     <h2 class="ds-section-heading">🗺️ Other Spots You Might Like</h2>
     <?php
     $all_venues = [
-        1 => ['name' => 'Lighthouse Sky Bar',    'image' => '../image/venue_1.png', 'sync' => 96],
-        2 => ['name' => 'Sky Walk Lotte',         'image' => '../image/venue_2.png', 'sync' => 94],
-        3 => ['name' => 'The Alchemist',          'image' => '../image/venue_3.png', 'sync' => 92],
-        4 => ['name' => 'Complex 01',             'image' => '../image/venue_4.png', 'sync' => 89],
+        1 => ['name' => 'Lighthouse Sky Bar',    'image' => '../image/lighthouseskybar.jpg', 'sync' => 96],
+        2 => ['name' => 'Sky Walk Lotte',         'image' => '../image/lotteobservationdeck.jpg', 'sync' => 94],
+        3 => ['name' => 'The Alchemist',          'image' => '../image/thealchemist.jpg', 'sync' => 92],
+        4 => ['name' => 'Complex 01',             'image' => '../image/complex01.jpg', 'sync' => 89],
     ];
     ?>
     <div class="other-spots-grid">
@@ -735,10 +735,10 @@ $vd = $venue_data[$spot_id] ?? [
             if ($vid === $spot_id) continue; // skip current
         ?>
         <a href="date_spot_detail.php?id=<?= $vid ?>" class="other-spot-card">
-            <img src="<?= htmlspecialchars($v['image']) ?>" alt="<?= htmlspecialchars($v['name']) ?>" onerror="this.src='../image/venue_1.png'">
+            <img src="<?= htmlspecialchars($v['image']) ?>" alt="<?= htmlspecialchars($v['name']) ?>" onerror="this.src='../image/lighthouseskybar.jpg'">
             <div class="other-spot-card-info">
                 <p class="other-spot-name"><?= htmlspecialchars($v['name']) ?></p>
-                <p class="other-spot-sync">❤️ <?= $v['sync'] ?>% SYNC</p>
+                <p class="other-spot-sync">❤️ <?= $v['sync'] ?> Likes</p>
             </div>
         </a>
         <?php endforeach; ?>
