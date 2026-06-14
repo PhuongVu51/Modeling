@@ -1,7 +1,7 @@
 <?php
 $servername = "localhost";
 $username = "root";
-$password = ""; 
+$password = "";
 $dbname = "soul_sync_db";
 
 // Criar conexão

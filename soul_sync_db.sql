@@ -1,10 +1,15 @@
--- 1. Xóa các bảng cũ (Theo thứ tự từ bảng con đến bảng cha để tránh lỗi khóa ngoại)
+SET FOREIGN_KEY_CHECKS = 0;
+
+-- 1. Xóa các bảng cũ
+DROP TABLE IF EXISTS messages;
 DROP TABLE IF EXISTS matches;
 DROP TABLE IF EXISTS likes;
 DROP TABLE IF EXISTS user_interests;
 DROP TABLE IF EXISTS interests;
 DROP TABLE IF EXISTS profiles;
 DROP TABLE IF EXISTS users;
+
+SET FOREIGN_KEY_CHECKS = 1;
 
 -- 2. Bảng Users (Lưu thông tin đăng nhập tài khoản)
 CREATE TABLE users (

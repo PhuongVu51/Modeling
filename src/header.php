@@ -16,7 +16,7 @@ if (!empty($current_user['avatar'])) {
         <a href="home.php" class="<?= basename($_SERVER['PHP_SELF']) == 'home.php' ? 'active' : '' ?>">HOME</a>
         <a href="matches.php" class="<?= basename($_SERVER['PHP_SELF']) == 'matches.php' ? 'active' : '' ?>">MATCHES</a>
         <a href="messages.php" class="<?= basename($_SERVER['PHP_SELF']) == 'messages.php' ? 'active' : '' ?>">MESSAGES</a>
-        <a href="#">EXPLORE</a>
+        <a href="explore.php" class="<?= basename($_SERVER['PHP_SELF']) == 'explore.php' ? 'active' : '' ?>">EXPLORE</a>
         
         <?php if (isset($is_pro) && $is_pro): ?>
             <a href="likes.php" style="color: #ff4b82; font-weight: 800;">
