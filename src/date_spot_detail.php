@@ -858,12 +858,12 @@ function sendSuggestion() {
             closeSuggestModal();
             showToast('💌 Date spot suggestion sent to your match!');
         } else {
-            showToast('❌ Failed to send suggestion.');
+            showToast('❌ ' + (data.message || 'Failed to send suggestion.'));
         }
     })
     .catch(err => {
         console.error(err);
-        showToast('❌ Error sending suggestion.');
+        showToast('❌ Error sending suggestion: ' + err.message);
     });
 }
 

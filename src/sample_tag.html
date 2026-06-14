@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sample Date Spot Tag</title>
+    <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background-color: #fbfbfb;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            font-family: 'Public Sans', sans-serif;
+        }
+        .chat-container {
+            background: #fff;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+            border: 1px solid #f0f0f0;
+        }
+        .msg-row {
+            display: flex;
+            justify-content: flex-end;
+        }
+        .msg-bubble {
+            background: transparent;
+            padding: 0;
+            border: none;
+            box-shadow: none;
+        }
+        /* The Tag Styling (matching the PHP output exactly) */
+        .ds-tag {
+            background: #fff;
+            border-radius: 16px;
+            overflow: hidden;
+            border: 1px solid #ffe6f0;
+            width: 220px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        }
+        .ds-tag img {
+            width: 100%;
+            height: 120px;
+            object-fit: cover;
+            display: block;
+        }
+        .ds-tag-content {
+            padding: 12px;
+        }
+        .ds-tag-name {
+            font-family: 'Public Sans', sans-serif;
+            font-weight: 800;
+            font-size: 15px;
+            color: #1a1a2e;
+            margin-bottom: 4px;
+        }
+        .ds-tag-likes {
+            color: #ff4d8d;
+            font-size: 13px;
+            font-weight: 700;
+            margin-bottom: 12px;
+        }
+        .ds-tag-btn {
+            display: block;
+            text-align: center;
+            background: linear-gradient(135deg, #ff4d8d, #ff7eb3);
+            color: #fff;
+            padding: 8px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: bold;
+            text-decoration: none;
+        }
+        .msg-meta {
+            text-align: right;
+            font-size: 0.75rem;
+            color: #999;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="chat-container">
+    <div style="margin-bottom: 15px; color: #888; font-size: 14px; text-align: center;">Preview of the Date Spot Suggestion Tag</div>
+    <div class="msg-row me">
+        <div>
+            <div class="msg-bubble">
+                <div class="ds-tag">
+                    <img src="../image/lighthouseskybar.jpg" alt="Lighthouse Sky Bar" onerror="this.src='https://images.unsplash.com/photo-1514933651103-005eec06c04b?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80'">
+                    <div class="ds-tag-content">
+                        <div class="ds-tag-name">Lighthouse Sky Bar</div>
+                        <div class="ds-tag-likes">❤️ 96 Likes</div>
+                        <a href="https://maps.google.com/?q=Lighthouse+Sky+Bar+Hanoi" target="_blank" class="ds-tag-btn">View on Map</a>
+                    </div>
+                </div>
+            </div>
+            <div class="msg-meta">10:30 PM ✓✓</div>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>
