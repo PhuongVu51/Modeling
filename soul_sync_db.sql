@@ -106,3 +106,49 @@ ALTER TABLE matches ADD COLUMN last_interact_date DATE DEFAULT NULL;
 ALTER TABLE matches ADD COLUMN is_blind TINYINT(1) DEFAULT 0;
 ALTER TABLE matches ADD COLUMN is_revealed TINYINT(1) DEFAULT 0;
 ALTER TABLE profiles ADD COLUMN is_waiting_blind TINYINT(1) DEFAULT 0;
+
+-----------------------------------------------------------------------------
+
+-- Bảng lưu trữ phiên Double Date
+CREATE TABLE IF NOT EXISTS double_dates (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    creator_id INT NOT NULL,
+    status ENUM('pending', 'active', 'rejected') DEFAULT 'pending',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (creator_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- Bảng lưu thành viên của Double Date và trạng thái đồng ý/từ chối
+CREATE TABLE IF NOT EXISTS double_date_members (
+    double_date_id INT NOT NULL,
+    user_id INT NOT NULL,
+    status ENUM('pending', 'accepted', 'rejected') DEFAULT 'pending',
+    PRIMARY KEY (double_date_id, user_id),
+    FOREIGN KEY (double_date_id) REFERENCES double_dates(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- Bảng lưu thông báo (Hình cái chuông)
+CREATE TABLE IF NOT EXISTS notifications (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    sender_id INT NOT NULL,
+    type VARCHAR(50) NOT NULL,
+    reference_id INT, 
+    message TEXT,
+    is_read TINYINT(1) DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-----------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS group_messages (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    double_date_id INT NOT NULL,
+    sender_id INT NOT NULL,
+    message_text TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (double_date_id) REFERENCES double_dates(id) ON DELETE CASCADE,
+    FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE
+);
