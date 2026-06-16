@@ -1,0 +1,107 @@
+Test Case 1: User Login
+Description: Verify that a valid user can log in to the application and is redirected to the home page.
+Pre-conditions: A user account must exist in the database.
+Steps:
+1. Navigate to the login page (e.g., /src/login.html).
+2. Enter a valid email address in the email field.
+3. Enter the correct password in the password field.
+4. Click the 'Login' or submit button.
+Expected Result: The user is successfully authenticated and redirected to /src/home.php.
+
+Test Case 2: Like a Profile (Swipe Right)
+Description: Verify that a user can like a suggested profile on the home feed.
+Pre-conditions: The user is logged in, on home.php, and has at least one profile card displayed.
+Steps:
+1. Ensure at least one profile card is displayed in the stack.
+2. Click the 'LIKE' button (the heart icon) on the active profile card.
+Expected Result: The profile card disappears from the feed. A request is sent to the server to record the 'like'. If it's a mutual match, a 'Match!' toast notification appears.
+
+Test Case 3: Pass a Profile (Swipe Left)
+Description: Verify that a user can pass on a suggested profile.
+Pre-conditions: The user is logged in, on home.php, and has at least one profile card displayed.
+Steps:
+1. Ensure at least one profile card is displayed in the stack.
+2. Click the 'Close' / 'X' button on the active profile card.
+Expected Result: The profile card disappears from the feed. A request is sent to the server to record the 'pass'.
+
+Test Case 4: AI Icebreaker Modal
+Description: Verify that the AI Icebreaker modal opens and displays suggestions.
+Pre-conditions: The user is logged in and on home.php.
+Steps:
+1. Click the AI Bot icon (robot icon) in the bottom right of the home feed area.
+2. Observe the modal opening and the loading spinner.
+Expected Result: The modal successfully opens, displays a loading state, and subsequently displays AI-generated icebreaker suggestions fetched from the backend.
+
+Test Case 5: Explore Date Spots and Save Venue
+Description: Verify that the user can explore date spots, filter them, and save/unsave a venue.
+Pre-conditions: The user is logged in.
+Steps:
+1. Navigate to /src/explore.php.
+2. Click on the "Romantic" filter tab.
+3. Click the 'Save' button (heart icon) on the first visible venue.
+4. Click on the "Saved" filter tab and verify the saved venue is visible.
+5. Click the 'Save' button again to unsave it.
+Expected Result: The filter tabs load correctly. The venue is saved and appears under the 'Saved' tab, and is successfully removed when unsaved.
+
+Test Case 6: Edit Profile Info
+Description: Verify that a user can update their nickname and bio on the edit profile page.
+Pre-conditions: The user is logged in.
+Steps:
+1. Navigate to /src/edit_profile.php.
+2. Clear the current value of the Nickname field and enter a new nickname.
+3. Clear the bio textarea and enter a new bio.
+4. Click the 'Save Changes' button.
+Expected Result: The profile updates successfully, redirects the user to profile.php, and shows the updated details.
+
+Test Case 7: Invalid Login Credentials
+Description: Verify that logging in with incorrect credentials fails and displays an error or retains user on the login page.
+Pre-conditions: None.
+Steps:
+1. Navigate to /src/login.html.
+2. Enter an invalid email address (e.g., wrong@abc.com).
+3. Enter an incorrect password.
+4. Click the 'Login' button.
+Expected Result: The authentication fails, and the user remains on the login page.
+
+Test Case 8: View Date Spot Detail
+Description: Verify that a user can view detailed information for a date spot.
+Pre-conditions: The user is logged in.
+Steps:
+1. Navigate to /src/explore.php.
+2. Locate the first date spot card and click the "View Details" button.
+Expected Result: The browser is redirected to date_spot_detail.php (e.g. date_spot_detail.php?id=1) and displays detailed content of the venue.
+
+Test Case 9: Chat Navigation and Messaging
+Description: Verify that a user can select an active match and send a chat message in Standard Mode.
+Pre-conditions: The user is logged in and has at least one active match in Standard Mode.
+Steps:
+1. Navigate to /src/messages.php?mode=standard.
+2. Select the first match from the chat threads list.
+3. Locate the message input field (`#msgInput`), type a message, and click the send button.
+Expected Result: The message bubble is successfully appended to the chat history and sent to the server.
+
+Test Case 10: Toggle Chat Modes
+Description: Verify that the user can switch between Standard Mode and Blind Mode inside the Messages page.
+Pre-conditions: The user is logged in.
+Steps:
+1. Navigate to /src/messages.php.
+2. Locate the mode toggle sidebar and click on "Blind Mode".
+Expected Result: The layout switches to the Blind Mode view, changing the page state/styles.
+
+Test Case 11: Queue and Cancel Blind Date
+Description: Verify that the user can start and cancel the matching queue for Blind Dates.
+Pre-conditions: The user is logged in and is in Blind Mode.
+Steps:
+1. Navigate to /src/messages.php?mode=blind.
+2. Click the "New Blind Date" button to queue.
+3. Observe the button text change to "Scanning souls..." indicating queue entry.
+4. Click the cancel/button again to cancel and leave the queue.
+Expected Result: The user enters the blind date matching queue successfully and can cancel/leave the queue without errors.
+
+Test Case 12: Logout Session
+Description: Verify that logging out terminates the session and redirects the user to the login page.
+Pre-conditions: The user is logged in.
+Steps:
+1. Navigate to /src/profile.php.
+2. Scroll to the bottom of the page and click the "LOG OUT" button.
+Expected Result: The user session is cleared, and the browser redirects to login.html.
