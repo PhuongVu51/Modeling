@@ -1,8 +1,10 @@
 from selenium import webdriver
 from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import time
+import os
 
 # --- Configuration ---
 # Update this base URL to match your local server environment
@@ -16,6 +18,18 @@ class SoulSyncTests:
         self.driver = webdriver.Chrome()
         self.driver.maximize_window()
         self.wait = WebDriverWait(self.driver, 10)
+
+    def save_debug_info(self, name):
+        """Helper to save screenshot and page source for debugging failures."""
+        try:
+            filename_png = f"{name}_screenshot.png"
+            filename_html = f"{name}_source.html"
+            self.driver.save_screenshot(filename_png)
+            with open(filename_html, "w", encoding="utf-8") as f:
+                f.write(self.driver.page_source)
+            print(f"[INFO] Saved debug info: {filename_png} and {filename_html} (Current URL: {self.driver.current_url})")
+        except Exception as e:
+            print(f"[ERROR] Failed to save debug info: {e}")
 
     def login_again(self):
         """Helper to re-login in case a session is expired or lost."""
@@ -62,6 +76,7 @@ class SoulSyncTests:
             print("[PASS] Invalid login test passed (alert accepted).")
         except Exception as e:
             print(f"[FAIL] Invalid login test failed: {e}")
+            self.save_debug_info("test_invalid_login")
 
     def test_login(self):
         print("\nRunning Test Case 1: User Login...")
@@ -83,6 +98,7 @@ class SoulSyncTests:
             print("[PASS] Login test passed.")
         except Exception as e:
             print(f"[FAIL] Login test failed: {e}")
+            self.save_debug_info("test_login")
 
     def test_swipe_right_like(self):
         print("\nRunning Test Case 2: Like a Profile...")
@@ -105,6 +121,7 @@ class SoulSyncTests:
             print("[PASS] Like profile test passed.")
         except Exception as e:
             print(f"[FAIL] Like profile test failed: {e}")
+            self.save_debug_info("test_swipe_right_like")
 
     def test_swipe_left_pass(self):
         print("\nRunning Test Case 3: Pass a Profile...")
@@ -127,6 +144,7 @@ class SoulSyncTests:
             print("[PASS] Pass profile test passed.")
         except Exception as e:
             print(f"[FAIL] Pass profile test failed: {e}")
+            self.save_debug_info("test_swipe_left_pass")
 
     def test_ai_icebreaker(self):
         print("\nRunning Test Case 4: AI Icebreaker Modal...")
@@ -151,6 +169,7 @@ class SoulSyncTests:
             print("[PASS] AI Icebreaker modal test passed.")
         except Exception as e:
             print(f"[FAIL] AI Icebreaker modal test failed: {e}")
+            self.save_debug_info("test_ai_icebreaker")
 
     def test_explore_date_spots(self):
         print("\nRunning Test Case 5: Explore Date Spots...")
@@ -189,6 +208,7 @@ class SoulSyncTests:
             print("[PASS] Explore Date Spots test completed.")
         except Exception as e:
             print(f"[FAIL] Explore Date Spots test failed: {e}")
+            self.save_debug_info("test_explore_date_spots")
 
     def test_view_date_spot_detail(self):
         print("\nRunning Test Case 8: View Date Spot Detail...")
@@ -206,6 +226,7 @@ class SoulSyncTests:
             print("[PASS] View Date Spot Detail test passed.")
         except Exception as e:
             print(f"[FAIL] View Date Spot Detail test failed: {e}")
+            self.save_debug_info("test_view_date_spot_detail")
 
     def test_toggle_chat_modes(self):
         print("\nRunning Test Case 10: Toggle Chat Modes...")
@@ -214,14 +235,15 @@ class SoulSyncTests:
             self.login_again()
             self.driver.get(f"{BASE_URL}/messages.php")
         try:
-            # Find the "Blind Mode" toggle button (second button in mode-toggle div)
-            blind_mode_btn = self.wait.until(EC.presence_of_element_located((By.XPATH, "//div[contains(@class, 'mode-toggle')]/button[2]")))
+            # Find the "Blind Mode" toggle button robustly by text
+            blind_mode_btn = self.wait.until(EC.presence_of_element_located((By.XPATH, "//button[contains(., 'Blind Mode')]")))
             self.driver.execute_script("arguments[0].click();", blind_mode_btn)
             
             self.wait.until(EC.url_contains("mode=blind"))
             print("[PASS] Toggle Chat Modes test passed.")
         except Exception as e:
-            print(f"[FAIL] Toggle Chat Modes test failed: {e}")
+            print(f"[FAIL] Toggle Chat Modes test failed: {repr(e)}")
+            self.save_debug_info("test_toggle_chat_modes")
 
     def test_queue_blind_date(self):
         print("\nRunning Test Case 11: Queue and Cancel Blind Date...")
@@ -255,7 +277,8 @@ class SoulSyncTests:
             self.wait.until(lambda d: "New Blind Date" in d.find_element(By.ID, "btnBlindDate").text)
             print("[PASS] Left Blind Date Queue successfully.")
         except Exception as e:
-            print(f"[FAIL] Queue Blind Date test failed: {e}")
+            print(f"[FAIL] Queue Blind Date test failed: {repr(e)}")
+            self.save_debug_info("test_queue_blind_date")
 
     def test_chat_messaging(self):
         print("\nRunning Test Case 9: Chat Navigation and Messaging...")
@@ -285,6 +308,7 @@ class SoulSyncTests:
             print("[PASS] Chat Navigation and Messaging test completed.")
         except Exception as e:
             print(f"[FAIL] Chat Navigation and Messaging test failed: {e}")
+            self.save_debug_info("test_chat_messaging")
 
     def test_edit_profile(self):
         print("\nRunning Test Case 6: Edit Profile Info...")
@@ -302,11 +326,21 @@ class SoulSyncTests:
             new_nickname = "Bach Automated"
             new_bio = f"Automated test bio updated at {time.strftime('%X')}"
 
-            # Clear inputs and enter new info
-            nickname_input.clear()
-            nickname_input.send_keys(new_nickname)
-            bio_textarea.clear()
-            bio_textarea.send_keys(new_bio)
+            # Set input values directly using JS value assignment
+            self.driver.execute_script("arguments[0].value = arguments[1];", nickname_input, new_nickname)
+            self.driver.execute_script("arguments[0].value = arguments[1];", bio_textarea, new_bio)
+            
+            # Dispatch event so browser registers value change
+            self.driver.execute_script("arguments[0].dispatchEvent(new Event('input', { bubbles: true }));", nickname_input)
+            self.driver.execute_script("arguments[0].dispatchEvent(new Event('change', { bubbles: true }));", nickname_input)
+            self.driver.execute_script("arguments[0].dispatchEvent(new Event('input', { bubbles: true }));", bio_textarea)
+            self.driver.execute_script("arguments[0].dispatchEvent(new Event('change', { bubbles: true }));", bio_textarea)
+            
+            time.sleep(0.5)
+
+            # Debug values in browser before saving
+            print(f"[DEBUG] Nickname in browser DOM before save: '{nickname_input.get_attribute('value')}'")
+            print(f"[DEBUG] Bio in browser DOM before save: '{bio_textarea.get_attribute('value')}'")
 
             # Save Changes
             self.driver.execute_script("arguments[0].click();", save_btn)
@@ -322,9 +356,11 @@ class SoulSyncTests:
                 print("[PASS] Profile info updated and verified successfully.")
             else:
                 print(f"[FAIL] Updated info does not match. Found Name: {profile_name}, Bio: {profile_bio}")
+                self.save_debug_info("test_edit_profile")
 
         except Exception as e:
             print(f"[FAIL] Edit Profile test failed: {e}")
+            self.save_debug_info("test_edit_profile")
 
     def test_logout(self):
         print("\nRunning Test Case 12: Logout Session...")
@@ -342,6 +378,7 @@ class SoulSyncTests:
             print("[PASS] Logout test passed.")
         except Exception as e:
             print(f"[FAIL] Logout test failed: {e}")
+            self.save_debug_info("test_logout")
 
     def run_all(self):
         try:
